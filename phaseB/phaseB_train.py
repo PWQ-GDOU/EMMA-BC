@@ -82,8 +82,14 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
     pbar = tqdm(loader, desc=f"Train E{epoch}/{total_epochs}")
     
     for batch in pbar:
+        # Skip batches with all-NaN labels (test set) or zero-mask audio
+        if torch.isnan(batch["phq_total"]).all():
+            continue
         audio = batch["audio"].to(device)
         attention_mask = batch["attention_mask"].to(device)
+        # Skip if attention_mask is all-zero (short audio)
+        if attention_mask.sum() < 1:
+            continue
         texts = batch["texts"]
         labels = batch["phq_total"].to(device)  # [B]
         
@@ -116,8 +122,12 @@ def val_epoch(model, loader, normalizer, device):
     n_batches = 0
     
     for batch in tqdm(loader, desc="Eval"):
+        if torch.isnan(batch["phq_total"]).all():
+            continue
         audio = batch["audio"].to(device)
         attention_mask = batch["attention_mask"].to(device)
+        if attention_mask.sum() < 1:
+            continue
         texts = batch["texts"]
         labels = batch["phq_total"].to(device)
         
@@ -341,7 +351,8 @@ def main():
             "scheduler_state_dict": scheduler.state_dict(),
             "label_normalizer": normalizer.state_dict(),
             "best_mae": best_mae,
-                "best_ccc": best_ccc,
+                "best_mae": best_mae,
+            "best_ccc": best_ccc,
             "global_step": (epoch - 1) * len(train_loader),
             "history": history,
         }, os.path.join(args.checkpoint_dir, "phaseB_latest.pt"))

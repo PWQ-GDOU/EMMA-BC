@@ -93,6 +93,8 @@ class DAICWOZDataset(Dataset):
         labels_csv = self.data_dir / "labels" / "Detailed_PHQ8_Labels.csv"
         self.phq8_labels = pd.read_csv(labels_csv)
         self.phq8_labels.set_index("Participant_ID", inplace=True)
+        # Test split: labels may be NaN — track for safe collation
+        self.is_test = (split == "test")
 
         # Load split assignment
         split_csv = self.data_dir / "labels" / f"{split}_split.csv"
@@ -154,17 +156,19 @@ class DAICWOZDataset(Dataset):
 
         # PHQ-8 labels: 8 items + total
         phq_row = self.phq8_labels.loc[pid]
-        phq_items = torch.tensor([
-            phq_row["PHQ_8NoInterest"],
-            phq_row["PHQ_8Depressed"],
-            phq_row["PHQ_8Sleep"],
-            phq_row["PHQ_8Tired"],
-            phq_row["PHQ_8Appetite"],
-            phq_row["PHQ_8Failure"],
-            phq_row["PHQ_8Concentrating"],
-            phq_row["PHQ_8Moving"],
-        ], dtype=torch.float)
-        phq_total = torch.tensor(phq_row["PHQ_8Total"], dtype=torch.float)
+        
+        # Test set may have NaN labels — return None
+        try:
+            phq_total = torch.tensor(phq_row["PHQ_8Total"], dtype=torch.float)
+            phq_items = torch.tensor([
+                phq_row["PHQ_8NoInterest"], phq_row["PHQ_8Depressed"],
+                phq_row["PHQ_8Sleep"], phq_row["PHQ_8Tired"],
+                phq_row["PHQ_8Appetite"], phq_row["PHQ_8Failure"],
+                phq_row["PHQ_8Concentrating"], phq_row["PHQ_8Moving"],
+            ], dtype=torch.float)
+        except (ValueError, TypeError, KeyError):
+            phq_total = torch.tensor(float('nan'))
+            phq_items = torch.full((8,), float('nan'))
 
         return {
             "audio": audio,
@@ -312,12 +316,20 @@ def collate_daic(batch):
         phq_items_list.append(item["phq_items"])
         pids.append(item["pid"])
 
+        # Stack labels; NaN-safe (test set may have missing labels)
+    try:
+        phq_total_stack = torch.stack(phq_totals)
+        phq_items_stack = torch.stack(phq_items_list)
+    except RuntimeError:
+        phq_total_stack = torch.tensor(phq_totals)
+        phq_items_stack = torch.tensor(phq_items_list)
+
     return {
         "audio": torch.stack(audio_list),
-        "attention_mask": torch.stack(mask_list),  # [B, T] float
+        "attention_mask": torch.stack(mask_list),
         "texts": texts,
-        "phq_total": torch.stack(phq_totals),
-        "phq_items": torch.stack(phq_items_list),
+        "phq_total": phq_total_stack,
+        "phq_items": phq_items_stack,
         "pids": pids,
     }
 
