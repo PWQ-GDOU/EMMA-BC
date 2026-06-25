@@ -12,8 +12,20 @@ Architecture:
 
 import torch
 import torch.nn as nn
+import random
 import torch.nn.functional as F
 import numpy as np
+
+def set_seed(seed=42):
+    """Fix random seeds for reproducible experiments."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+set_seed(42)
 from transformers import Wav2Vec2Model, BertModel, BertTokenizer
 
 
@@ -89,7 +101,7 @@ class AudioEncoder(nn.Module):
 
         # Load pretrained weights if provided
         if pretrained_path is not None:
-            ckpt = torch.load(pretrained_path, map_location="cpu")
+            ckpt = torch.load(pretrained_path, map_location="cpu", weights_only=True)
             state = ckpt["model_state_dict"] if "model_state_dict" in ckpt else ckpt
             # Filter to audio encoder keys only
             audio_state = {

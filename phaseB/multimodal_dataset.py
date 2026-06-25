@@ -17,8 +17,13 @@ from pathlib import Path
 from collections import defaultdict
 
 import numpy as np
+import random
 import torch
 from torch.utils.data import Dataset, DataLoader
+
+random.seed(42)
+np.random.seed(42)
+torch.manual_seed(42)
 import soundfile as sf
 import pandas as pd
 import torchaudio
@@ -82,6 +87,11 @@ class DAICWOZDataset(Dataset):
             ).squeeze(0)
         if waveform.shape[0] > self.max_samples:
             waveform = waveform[:self.max_samples]
+        elif waveform.shape[0] < self.max_samples:
+            waveform = torch.cat([
+                waveform,
+                torch.zeros(self.max_samples - waveform.shape[0])
+            ])
         return waveform
 
     def _load_transcript(self, path):
@@ -196,6 +206,11 @@ class MODMADataset(Dataset):
 
         if combined.shape[0] > self.max_samples:
             combined = combined[:self.max_samples]
+        elif combined.shape[0] < self.max_samples:
+            combined = torch.cat([
+                combined,
+                torch.zeros(self.max_samples - combined.shape[0])
+            ])
         return combined
 
     def __getitem__(self, idx):
@@ -231,21 +246,15 @@ class MODMADataset(Dataset):
 # ══════════════════════════════════════════════════════════
 
 def collate_daic(batch):
-    """Collate DAIC-WOZ batch with variable-length audio."""
+    """Collate DAIC-WOZ batch (audio pre-padded to uniform length in _load_audio)."""
     audio_list = []
     texts = []
     phq_totals = []
     phq_items_list = []
     pids = []
 
-    max_audio_len = max(item["audio"].shape[0] for item in batch)
-
     for item in batch:
-        audio = item["audio"]
-        pad_len = max_audio_len - audio.shape[0]
-        if pad_len > 0:
-            audio = torch.cat([audio, torch.zeros(pad_len)])
-        audio_list.append(audio)
+        audio_list.append(item["audio"])
         texts.append(item["transcript"])
         phq_totals.append(item["phq_total"])
         phq_items_list.append(item["phq_items"])
@@ -261,7 +270,7 @@ def collate_daic(batch):
 
 
 def collate_modma(batch):
-    """Collate MODMA batch."""
+    """Collate MODMA batch (audio pre-padded to uniform length in _load_audio)."""
     audio_list = []
     texts = []
     phq_list = []
@@ -269,14 +278,8 @@ def collate_modma(batch):
     psqi_list = []
     sids = []
 
-    max_audio_len = max(item["audio"].shape[0] for item in batch)
-
     for item in batch:
-        audio = item["audio"]
-        pad_len = max_audio_len - audio.shape[0]
-        if pad_len > 0:
-            audio = torch.cat([audio, torch.zeros(pad_len)])
-        audio_list.append(audio)
+        audio_list.append(item["audio"])
         texts.append(item["transcript"])
         phq_list.append(item["phq"])
         gad_list.append(item["gad"])

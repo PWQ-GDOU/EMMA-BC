@@ -16,8 +16,16 @@ from pathlib import Path
 from collections import defaultdict
 
 import numpy as np
+import random
 import torch
 import torch.nn as nn
+
+random.seed(42)
+np.random.seed(42)
+torch.manual_seed(42)
+torch.cuda.manual_seed_all(42)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.optim import AdamW
@@ -110,6 +118,11 @@ class EmotionDataset(Dataset):
         # Trim or pad
         if waveform.shape[0] > self.max_samples:
             waveform = waveform[:self.max_samples]
+        elif waveform.shape[0] < self.max_samples:
+            waveform = torch.cat([
+                waveform,
+                torch.zeros(self.max_samples - waveform.shape[0])
+            ])
         
         return waveform, torch.tensor(label, dtype=torch.long)
     
@@ -321,7 +334,8 @@ def main():
     n_total = len(dataset)
     n_val = max(int(n_total * 0.15), 32)
     n_train = n_total - n_val
-    train_ds, val_ds = torch.utils.data.random_split(dataset, [n_train, n_val])
+    generator = torch.Generator().manual_seed(42)
+    train_ds, val_ds = torch.utils.data.random_split(dataset, [n_train, n_val], generator=generator)
     
     # Weighted sampling to balance RAVDESS (few) vs CREMA-D (many)
     all_weights = dataset.get_sample_weights(ravdess_weight=args.ravdess_weight)
