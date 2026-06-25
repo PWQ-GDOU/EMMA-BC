@@ -125,7 +125,8 @@ class AudioEncoder(nn.Module):
             not all(p.requires_grad == False for p in self.wav2vec2.parameters())
         ):
             w2v_out = self.wav2vec2(waveform, attention_mask=attention_mask)
-            features = w2v_out.last_hidden_state  # [B, T_w2v, 768]
+            features = w2v_out.last_hidden_state
+            mask_w2v = w2v_out.attention_mask if hasattr(w2v_out, 'attention_mask') else None  # [B, T_w2v, 768]
 
         features = self.input_proj(features)  # [B, T_w2v, d_model]
         features = features.transpose(1, 2)   # [B, d_model, T_w2v]

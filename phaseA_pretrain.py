@@ -228,10 +228,11 @@ class AudioEmotionEncoder(nn.Module):
         # Masked mean pool: exclude zero-padded frames using attention_mask
         # Wav2Vec2 downsamples ~320x, conv 4x -> total ~1280x -> compute exact factor
         if attention_mask is not None:
-            T_audio = attention_mask.shape[1]
-            T_feat = features.shape[1]
-            ds_factor = max(1, T_audio // T_feat)
-            mask_ds = attention_mask[:, ::ds_factor][:, :T_feat]
+            if mask_w2v is not None and mask_w2v.shape[1] > 0:
+                mask_ds = mask_w2v[:, ::4][:, :features.shape[1]]
+            else:
+                ds_factor = max(1, attention_mask.shape[1] // features.shape[1])
+                mask_ds = attention_mask[:, ::ds_factor][:, :features.shape[1]]
             mask_f = mask_ds.unsqueeze(-1)  # [B, T_feat, 1]
             pooled = (features * mask_f).sum(dim=1) / mask_f.sum(dim=1).clamp(min=1)
         else:

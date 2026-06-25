@@ -96,12 +96,12 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
         
         loss = nn.functional.mse_loss(pred, labels_norm)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         
         losses += loss.item()
         n_batches += 1
-        pbar.set_postfix({"loss": f"{loss.item():.3f}"})
+        pbar.set_postfix({"loss": f"{loss.item():.3f}", "gnorm": f"{grad_norm:.2f}"})
     
     return losses / n_batches
 
@@ -109,6 +109,8 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
 @torch.no_grad()
 def val_epoch(model, loader, normalizer, device):
     model.eval()
+    norm_mean = normalizer.mean.to(device) if normalizer.mean is not None else None
+    norm_std = normalizer.std.to(device) if normalizer.std is not None else None
     all_preds, all_labels = [], []
     losses = 0.0
     n_batches = 0
@@ -136,8 +138,8 @@ def val_epoch(model, loader, normalizer, device):
     # CRITICAL: de-normalize BEFORE computing metrics
     metrics = regression_metrics(
         preds, labels,
-        pred_mean=normalizer.mean[0] if normalizer.mean is not None else None,
-        pred_std=normalizer.std[0] if normalizer.std is not None else None,
+        pred_mean=norm_mean[0] if norm_mean is not None else None,
+        pred_std=norm_std[0] if norm_std is not None else None,
     )
     metrics["loss"] = losses / n_batches
     return metrics
@@ -152,7 +154,7 @@ def main():
     parser.add_argument("--data", type=str, default="/data/disk1/datasets/diac_woz")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--epochs", type=int, default=50)
-    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=5e-4, help="Higher LR for small trainable head")
     parser.add_argument("--d_model", type=int, default=256)
     parser.add_argument("--checkpoint_dir", type=str, default="checkpoints/phaseB")
     parser.add_argument("--audio_pretrained", type=str, default="checkpoints/phaseA/phaseA_best.pt")
