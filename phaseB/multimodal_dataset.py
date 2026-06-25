@@ -81,10 +81,12 @@ class DAICWOZDataset(Dataset):
         sample_rate: target audio sample rate
         max_audio_sec: maximum audio duration in seconds
     """
-    def __init__(self, data_dir, split="train", sample_rate=16000, max_audio_sec=600):
+    def __init__(self, data_dir, split="train", sample_rate=16000, max_audio_sec=600, min_audio_sec=1.0):
         self.data_dir = Path(data_dir)
         self.sample_rate = sample_rate
         self.max_samples = int(max_audio_sec * sample_rate)
+        self.min_samples = int(getattr(self, 'min_audio_sec', 1.0) * sample_rate) if hasattr(self, 'min_audio_sec') else 16000
+        self.min_samples = int(min_audio_sec * sample_rate)  # Wav2Vec2 needs >= 6400 samples
         self.split = split
 
         # Load PHQ-8 labels
@@ -103,7 +105,10 @@ class DAICWOZDataset(Dataset):
             audio_path = self.data_dir / "extracted" / f"{pid}" / f"{pid}_AUDIO.wav"
             transcript_path = self.data_dir / "extracted" / f"{pid}" / f"{pid}_Transcript.csv"
             if audio_path.exists():
-                self.samples.append({
+                # Skip samples shorter than min_audio_sec (Wav2Vec2 can't process)
+                audio_size = audio_path.stat().st_size
+                if audio_size < self.min_samples * 2:  # 16-bit PCM: 2 bytes per sample
+                    continue
                     "pid": pid,
                     "audio": str(audio_path),
                     "transcript": str(transcript_path) if transcript_path.exists() else None,
@@ -191,6 +196,8 @@ class MODMADataset(Dataset):
         self.data_dir = Path(data_dir)
         self.sample_rate = sample_rate
         self.max_samples = int(max_audio_sec * sample_rate)
+        self.min_samples = int(getattr(self, 'min_audio_sec', 1.0) * sample_rate) if hasattr(self, 'min_audio_sec') else 16000
+        self.min_samples = int(min_audio_sec * sample_rate)  # Wav2Vec2 needs >= 6400 samples
 
         # Load clinical labels
         self.labels_df = pd.read_excel(xlsx_path)

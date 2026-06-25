@@ -231,6 +231,7 @@ def main():
     # ── 4. Resume (CRITICAL Fix 4: full state restoration) ──
     start_epoch = 1
     best_ccc = -1.0
+    best_mae = float('inf')
     
     if args.resume and os.path.exists(args.resume):
         print(f"\n═══ Resuming from {args.resume} ═══")
@@ -242,6 +243,7 @@ def main():
         normalizer.load_state_dict(ckpt["label_normalizer"])
         start_epoch = ckpt["epoch"] + 1
         best_ccc = ckpt.get("best_ccc", -1.0)
+        best_mae = ckpt.get("best_mae", float('inf'))
         
         # Restore warmup step count
         if "global_step" in ckpt:
@@ -278,7 +280,8 @@ def main():
         print(f"  Val   MAE:  {metrics['mae']:.3f}  |  RMSE: {metrics['rmse']:.3f}  |  CCC: {metrics['ccc']:.3f}")
         
         # Save best (by CCC)
-        if metrics["ccc"] > best_ccc:
+        if metrics["mae"] < best_mae:
+            best_mae = metrics["mae"]
             best_ccc = metrics["ccc"]
             torch.save({
                 "epoch": epoch,
@@ -286,12 +289,13 @@ def main():
                 "optimizer_state_dict": optimizer.state_dict(),
                 "scheduler_state_dict": scheduler.state_dict(),
                 "label_normalizer": normalizer.state_dict(),
+                "best_mae": best_mae,
                 "best_ccc": best_ccc,
                 "global_step": (epoch - 1) * len(train_loader),
                 "history": history,
                 "config": {k: v for k, v in vars(args).items() if not k.startswith("_")},
             }, os.path.join(args.checkpoint_dir, "phaseB_best.pt"))
-            print(f"  \u2713 Best checkpoint (CCC={best_ccc:.4f})")
+            print(f"  \u2713 Best checkpoint (MAE={best_mae:.3f}, CCC={best_ccc:.4f})")
         
         # Save latest
         torch.save({
@@ -300,7 +304,8 @@ def main():
             "optimizer_state_dict": optimizer.state_dict(),
             "scheduler_state_dict": scheduler.state_dict(),
             "label_normalizer": normalizer.state_dict(),
-            "best_ccc": best_ccc,
+            "best_mae": best_mae,
+                "best_ccc": best_ccc,
             "global_step": (epoch - 1) * len(train_loader),
             "history": history,
         }, os.path.join(args.checkpoint_dir, "phaseB_latest.pt"))
@@ -309,7 +314,7 @@ def main():
     with open(os.path.join(args.checkpoint_dir, "history.json"), "w") as f:
         json.dump(history, f, indent=2)
     
-    print(f"\n\u2705 Phase B complete! Best CCC: {best_ccc:.4f}")
+    print(f"\n\u2705 Phase B complete! Best MAE: {best_mae:.3f}, CCC: {best_ccc:.4f}")
     print(f"   Checkpoint: {args.checkpoint_dir}/phaseB_best.pt")
 
 

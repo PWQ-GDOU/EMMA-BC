@@ -234,7 +234,7 @@ class AudioEmotionEncoder(nn.Module):
                 ds_factor = max(1, attention_mask.shape[1] // features.shape[1])
                 mask_ds = attention_mask[:, ::ds_factor][:, :features.shape[1]]
             mask_f = mask_ds.unsqueeze(-1)  # [B, T_feat, 1]
-            pooled = (features * mask_f).sum(dim=1) / mask_f.sum(dim=1).clamp(min=1)
+            pooled = (features * mask_f).sum(dim=1) / mask_f.sum(dim=1).clamp(min=1e-6)  # avoid div by zero for all-pad samples
         else:
             pooled = features.mean(dim=1)  # [B, d_model]
         
