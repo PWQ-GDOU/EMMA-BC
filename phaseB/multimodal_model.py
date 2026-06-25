@@ -314,6 +314,14 @@ class MultimodalClinicalModel(nn.Module):
         super().__init__()
         self.d_model = d_model
 
+        # --- BatchNorm Freeze ---
+        # requires_grad=False does NOT stop BatchNorm running stats.
+        # Must explicitly set frozen modules to eval mode.
+        if freeze_audio_w2v:
+            self.audio_encoder.wav2vec2.eval()
+        if freeze_text_bert:
+            self.text_encoder.bert.eval()
+
         # Safety: verify freeze flags explicitly
         if not freeze_audio_w2v:
             print("\n*** WARNING: Unfreezing wav2vec2 (~320M params). VRAM usage will spike ***")
@@ -374,6 +382,18 @@ class MultimodalClinicalModel(nn.Module):
         text_emb = self.text_encoder(texts, device)               # [B, d_model]
         return self.fusion_head(audio_emb, text_emb)
 
+    def freeze_backbones_for_training(self):
+        """Call ONCE before training. Sets frozen modules to eval() 
+        so LayerNorm/BatchNorm running stats don't drift."""
+        import torch.nn as nn
+        for name, module in self.named_modules():
+            if "audio_encoder.wav2vec2" in name or "text_encoder.bert" in name:
+                if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm)):
+                    module.eval()
+        self.audio_encoder.wav2vec2.eval()
+        self.text_encoder.bert.eval()
+        print("[freeze_backbones] Done")
+
     def count_params(self):
         total = sum(p.numel() for p in self.parameters())
         trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -417,11 +437,15 @@ def concordance_correlation_coefficient(y_pred, y_true):
     return torch.clamp(ccc, -1.0, 1.0)
 
 
-def regression_metrics(y_pred, y_true):
-    """Compute MAE, RMSE, Pearson r, and CCC."""
+def regression_metrics(y_pred, y_true, pred_mean=None, pred_std=None):
+    """Compute MAE, RMSE, Pearson r, and CCC. Metrics on ORIGINAL scale.
+    If pred_mean/std provided, de-normalizes before computing metrics.
+    CRITICAL: Never report normalized-space metrics as PHQ-8 MAE."""
     y_pred = y_pred.view(-1).float()
     y_true = y_true.view(-1).float()
-    
+    if pred_mean is not None and pred_std is not None:
+        y_pred = y_pred * pred_std + pred_mean
+        y_true = y_true * pred_std + pred_mean
     mae = torch.abs(y_pred - y_true).mean()
     rmse = torch.sqrt(((y_pred - y_true) ** 2).mean())
     
