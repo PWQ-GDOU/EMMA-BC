@@ -154,10 +154,10 @@ def mc_dropout_predict(model, audio, texts, attention_mask, device, n_samples=30
     """
     Monte Carlo Dropout: run forward pass N times with dropout enabled.
     
-    Returns: mean_pred, std_pred, lower_95, upper_95, all_preds
+    Returns: mean_pred, std_pred, ci_lower (percentile), ci_upper (percentile), all_preds
     """
     model.eval()
-    enable_dropout(model)  # Keep dropout active
+    enable_dropout(model)
     
     all_preds = []
     for _ in range(n_samples):
@@ -168,8 +168,9 @@ def mc_dropout_predict(model, audio, texts, attention_mask, device, n_samples=30
     all_preds = torch.stack(all_preds, dim=0)  # [N, B]
     mean_preds = all_preds.mean(dim=0)          # [B]
     std_preds = all_preds.std(dim=0)            # [B]
-    lower_95 = mean_preds - 1.96 * std_preds
-    upper_95 = mean_preds + 1.96 * std_preds
+    # Percentile-based CI: PHQ-8 is bounded [0,24], Gaussian assumption is wrong
+    lower_95 = torch.tensor(np.percentile(all_preds.numpy(), 2.5, axis=0))
+    upper_95 = torch.tensor(np.percentile(all_preds.numpy(), 97.5, axis=0))
     
     return {
         "mean": mean_preds,
@@ -373,5 +374,50 @@ def main():
     print(f"\nResults saved to {args.output}/")
 
 
-if __name__ == "__main__":
+def predict_to_csv(model, loader, normalizer, device, output_path,
+                    use_mc_dropout=True, mc_samples=30):
+    """Generate prediction CSV with Fused_Trust_Score.
+    Columns: Subject_ID, PHQ_Score, Confidence, Modality_Status,
+    MC_Mean, MC_Std, CI_Lower_95, CI_Upper_95, Fused_Trust_Score"""
+    import csv
+    rows = []
+    max_mc_std = 0.0
+    model.eval()
+    for batch in tqdm(loader, desc="Predict CSV"):
+        audio = batch["audio"].to(device)
+        attention_mask = batch["attention_mask"].to(device)
+        texts = batch["texts"]
+        pids = batch["pids"]
+        labels = batch["phq_total"]
+        if torch.isnan(labels).all() or attention_mask.sum() < 1:
+            continue
+        for i in range(len(pids)):
+            a = audio[i:i+1]; m = attention_mask[i:i+1]; t = texts[i]; pid = pids[i]
+            pred, conf, flag = predict_with_fallback(model, a, t, m, device)
+            if use_mc_dropout:
+                mc_result = mc_dropout_predict(model, a, [t], m, device, n_samples=mc_samples)
+                nm = normalizer.mean[0].item() if normalizer.mean is not None else 0
+                ns = normalizer.std[0].item() if normalizer.std is not None else 1
+                mc_mean = mc_result["mean"][0].item() * ns + nm
+                mc_std = mc_result["std"][0].item() * ns
+                ci_lo = mc_result["ci_lower"][0].item() * ns + nm
+                ci_hi = mc_result["ci_upper"][0].item() * ns + nm
+                max_mc_std = max(max_mc_std, mc_std)
+                rows.append([pid, pred, conf, flag, mc_mean, mc_std, ci_lo, ci_hi, 0.0])
+            else:
+                rows.append([pid, round(pred,2), round(conf,2), flag])
+    if use_mc_dropout and max_mc_std > 0:
+        for row in rows:
+            row[8] = round(row[2] * (1.0 - row[5] / max_mc_std), 2)
+    header = ["Subject_ID","PHQ_Score","Confidence","Modality_Status",
+              "MC_Mean","MC_Std","CI_Lower_95","CI_Upper_95","Fused_Trust_Score"]
+    with open(output_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(rows)
+    print(f"Predictions saved to {output_path} ({len(rows)} records)")
+    return output_path
+
+
+
     main()
