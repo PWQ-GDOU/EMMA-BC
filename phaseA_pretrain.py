@@ -379,14 +379,24 @@ def main():
     # Resume from checkpoint if specified
     if args.resume:
         print(f"\nResuming from {args.resume}")
-        ckpt = torch.load(args.resume, map_location=device, weights_only=True)
+        ckpt = torch.load(args.resume, map_location=device, weights_only=False)  # weights_only=False needed for optimizer state
         model.load_state_dict(ckpt["model_state_dict"])
         optimizer.load_state_dict(ckpt["optimizer_state_dict"])
         scheduler.load_state_dict(ckpt["scheduler_state_dict"])
         start_epoch = ckpt["epoch"] + 1
         best_acc = ckpt.get("best_acc", 0)
         history = ckpt.get("history", history)
-        print(f"Resumed at epoch {start_epoch}, best_acc={best_acc*100:.1f}%")
+                print(f"Resumed at epoch {start_epoch}, best_acc={best_acc*100:.1f}%")
+        # If user specified --lr, override scheduler's saved LR
+        if args.lr != parser.get_default("lr"):
+            print(f"Note: --lr={args.lr} overrides checkpoint LR — resetting scheduler")
+            for g in optimizer.param_groups:
+                g["lr"] = args.lr
+            scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
+            scheduler.load_state_dict(ckpt["scheduler_state_dict"])  # keep last step
+        # If user specified --epochs < checkpoint epoch, warn
+        if args.epochs <= start_epoch:
+            print(f"WARNING: --epochs={args.epochs} <= resumed epoch {start_epoch}. No new training.")
     
     print(f"\n═══ Training ({start_epoch} → {args.epochs}) ═══")
     for epoch in range(start_epoch, args.epochs + 1):

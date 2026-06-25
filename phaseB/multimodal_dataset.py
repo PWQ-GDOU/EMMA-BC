@@ -33,6 +33,40 @@ import torchaudio
 # DAIC-WOZ Dataset
 # ══════════════════════════════════════════════════════════
 
+
+    def split_val_from_train(self, val_ratio=0.15, seed=42):
+        """
+        Split the TRAIN set into train/val BY PARTICIPANT.
+        Critical: same participant must not appear in both train and val.
+        
+        Uses official train_split.csv as source, splits by participant ID.
+        Call ONLY on the full train dataset before creating DataLoaders.
+        """
+        import random
+        rng = random.Random(seed)
+        
+        # Group samples by participant
+        pid_to_indices = {}
+        for i, s in enumerate(self.samples):
+            pid_to_indices.setdefault(s["pid"], []).append(i)
+        
+        pids = sorted(pid_to_indices.keys())
+        rng.shuffle(pids)
+        n_val = max(1, int(len(pids) * val_ratio))
+        
+        val_pids = set(pids[:n_val])
+        train_pids = set(pids[n_val:])
+
+        train_idx = [i for pid in train_pids for i in pid_to_indices[pid]]
+        val_idx = [i for pid in val_pids for i in pid_to_indices[pid]]
+        
+        print(f"[DAIC-WOZ Subject Split] train={len(train_pids)} participants ({len(train_idx)} samples), "
+              f"val={len(val_pids)} ({len(val_idx)} samples)")
+        
+        from torch.utils.data import Subset
+        return Subset(self, train_idx), Subset(self, val_idx)
+
+
 class DAICWOZDataset(Dataset):
     """
     DAIC-WOZ: clinical interview audio + transcript → PHQ-8 regression.

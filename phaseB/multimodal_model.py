@@ -133,8 +133,15 @@ class AudioEncoder(nn.Module):
         features = features.transpose(1, 2)   # [B, T_conv, d_model]
         features = self.pos_enc(features)
         features = self.transformer(features) # [B, T_conv, d_model]
-        pooled = features.mean(dim=1)         # [B, d_model]
-        return pooled
+        # Masked mean: exclude zero-padded frames from pooling
+        if attention_mask is not None:
+            # Downsample mask to match conv output temporal resolution (4x downsample)
+            mask_conv = attention_mask[:, ::4][:, :features.shape[1]]
+            mask_float = mask_conv.float().unsqueeze(-1)  # [B, T_conv, 1]
+            pooled = (features * mask_float).sum(dim=1) / mask_float.sum(dim=1).clamp(min=1)
+        else:
+            pooled = features.mean(dim=1)
+        return pooled  # [B, d_model]
 
 
 # ══════════════════════════════════════════════════════════
@@ -274,6 +281,13 @@ class MultimodalFusion(nn.Module):
 # Minimum recommended GPU: GTX 1080 (8GB) or better
 # 2080Ti (11GB): comfortable, can increase batch to 32
 
+
+# OPTIMIZER SETUP (in training script):
+#   optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
+#   ^^^ CRITICAL: filter() is required. Using model.parameters() directly
+#   will allocate gradient memory for frozen ~320M params even though they
+#   don't update, wasting VRAM. With filter(), only ~5.9M params get optimised.
+
 class MultimodalClinicalModel(nn.Module):
     """
     End-to-end: Audio + Text → Clinical Scores.
@@ -329,16 +343,29 @@ class MultimodalClinicalModel(nn.Module):
             fusion_dropout=dropout,
         )
 
+
+# LABEL NORMALIZATION (in training script):
+# PHQ-8 range 0-24, PHQ-9 range 0-27, GAD-7 range 0-21, PSQI range 0-21.
+# Large raw values dominate gradient; normalize to Z-score before training.
+#
+#   train_mean = train_labels.mean(dim=0)
+#   train_std = train_labels.std(dim=0).clamp(min=1e-6)
+#   norm_labels = (labels - train_mean) / train_std
+#
+# At eval time, un-normalize predictions:
+#   preds_raw = preds * train_std + train_mean
+#   Then compute MAE/RMSE on raw scale.
+#
+# Store train_mean, train_std in checkpoint for reproducibility.
+
     def forward(self, waveform, texts, attention_mask=None):
         """
-        Cross-modal fusion: audio and text are independently
-        pooled to fixed [B, d_model] vectors, then concatenated.
-        No temporal alignment needed — safe for any input length.
-
+        Masked mean fusion: zero-padded regions are excluded from pooling.
+        
         Args:
-            waveform: [B, T_audio] raw 16kHz audio
+            waveform: [B, T_audio] raw 16kHz audio (must be 16kHz)
             texts: List[str] batch of transcripts
-            attention_mask: optional [B, T_audio]
+            attention_mask: [B, T_audio] bool mask (True=valid, False=pad)
         Returns:
             dict: {"phq": [B,1], "gad": [B,1], "psqi": [B,1]}
         """
