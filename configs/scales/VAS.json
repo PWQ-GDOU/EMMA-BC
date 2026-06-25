@@ -1,0 +1,13 @@
+{
+  "name": "VAS",
+  "fullName": "Visual Analogue Scale for Pain",
+  "purpose": "评估患者当前或最近一段时间内的疼痛强度",
+  "instrumentFormat": "100 mm 直线（推荐10 cm），一端标记'无痛'（0分），另一端标记'无法忍受的疼痛'（100分）",
+  "scoringMethod": "测量患者标记点到0点的长度（mm），得分范围0~100",
+  "interpretation": [
+    { "category": "无痛", "score": 0, "mmRange": [0, 0] },
+    { "category": "轻度疼痛", "scoreRange": [1, 3], "mmRange": [5, 44] },
+    { "category": "中度疼痛", "scoreRange": [4, 6], "mmRange": [45, 74] },
+    { "category": "重度疼痛", "scoreRange": [7, 10], "mmRange": [75, 100] }
+  ]
+}

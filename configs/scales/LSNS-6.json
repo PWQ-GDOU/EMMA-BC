@@ -1,0 +1,25 @@
+{
+  "name": "LSNS-6",
+  "fullName": "Lubben Social Network Scale (6-item short version)",
+  "purpose": "衡量社会联系程度，评估社会隔离风险",
+  "itemsCount": 6,
+  "subscales": [
+    { "name": "家庭支持", "itemsCount": 3 },
+    { "name": "朋友支持", "itemsCount": 3 }
+  ],
+  "scoring": {
+    "itemScores": {
+      "0": "无",
+      "1": "1人",
+      "2": "2人",
+      "3": "3~4人",
+      "4": "5~8人",
+      "5": "≥9人"
+    },
+    "totalRange": [0, 30]
+  },
+  "interpretation": {
+    "isolationRiskThreshold": 12,
+    "note": "总分 ≤12 分为社会隔离风险阈值，得分越低提示风险越高"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "CFS",
+  "fullName": "Cancer Fatigue Scale",
+  "purpose": "评估癌症患者的疲乏程度，涵盖身体、认知、情感三个维度",
+  "itemsCount": 15,
+  "dimensions": [
+    { "name": "身体疲乏", "itemsCount": 4 },
+    { "name": "认知疲乏", "itemsCount": 5 },
+    { "name": "情感疲乏", "itemsCount": 5 }
+  ],
+  "scoring": {
+    "itemScoreRange": [1, 5],
+    "reverseItems": [5, 8, 11, 14],
+    "totalRange": [15, 75],
+    "interpretationDirection": "分数越高表示疲乏越严重（与PROMIS方向相反）",
+    "additionalNote": "各维度及总分均可独立分析，建议结合同人群常模解读"
+  }
+}

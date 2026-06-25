@@ -1,0 +1,14 @@
+{
+  "name": "PROMIS-PF-6b",
+  "fullName": "PROMIS Physical Function Short Form 6b",
+  "purpose": "测量日常活动中的身体功能受限程度",
+  "itemsCount": 6,
+  "responseScale": "5级评分（例如：1=无任何困难，5=完全不能，方向视具体条目而定）",
+  "rawScoreRange": [6, 30],
+  "standardizedScoring": {
+    "method": "原始分需使用PROMIS官方评分手册或在线评分服务转换为T分",
+    "tScoreMean": 50,
+    "tScoreSD": 10,
+    "interpretation": "T分越高表示身体功能越佳"
+  }
+}

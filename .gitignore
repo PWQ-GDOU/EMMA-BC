@@ -6,24 +6,44 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+*.so
 
-# Data
+# Data (ALL datasets excluded)
 datasets/
+data/
 *.wav
 *.tar.gz
 *.zip
 *.pt
+*.pth
+*.npy
+*.mat
+*.raw
+*.flv
+*.mp4
+*.avi
+
+# Checkpoints
 checkpoints/
+*.ckpt
+
+# Logs & outputs
+*.log
+logs/
+outputs/
+wandb/
 
 # IDE
 .vscode/
 .idea/
 *.swp
-
-# Logs
-*.log
-logs/
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
+*.bak
+
+# Large binary files
+*.safetensors
+*.bin  # exclude model weights

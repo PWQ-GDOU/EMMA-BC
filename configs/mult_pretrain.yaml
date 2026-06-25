@@ -1,0 +1,82 @@
+# CancerEmotionSystem Configuration
+# MulT Pretraining Configuration
+
+model:
+  name: "MulT_Bimodal"
+  
+  # Input dimensions
+  d_audio: 768       # wav2vec2-large output dimension
+  d_video: 512       # ViT-B/16 output dimension
+  
+  # Architecture
+  d_model: 256       # Common embedding dimension
+  n_layers: 4        # Crossmodal Transformer layers
+  n_heads: 8         # Attention heads
+  d_ff: 1024         # FFN hidden dimension
+  dropout: 0.1
+  
+  # Sequence
+  max_seq_len: 500   # Max timesteps per sequence
+  
+  # Output
+  num_emotions: 2    # [depression_score, anxiety_score] or [valence, arousal]
+  output_activation: "none"  # "none" for regression, "sigmoid" for 0-1
+
+training:
+  batch_size: 16
+  epochs: 50
+  learning_rate: 1e-4
+  weight_decay: 1e-5
+  warmup_steps: 1000
+  
+  # Loss weights
+  ccc_weight: 0.3    # Concordance Correlation Coefficient
+  mse_weight: 1.0    # Mean Squared Error
+  
+  # Optimizer
+  optimizer: "adamw"
+  scheduler: "cosine"
+  
+  # Early stopping
+  patience: 10
+  min_delta: 0.001
+
+data:
+  # Pretraining datasets
+  pretrain_datasets:
+    - name: "ravdess"
+      modality: "audio_video"
+      split: "train"
+    - name: "cremad"
+      modality: "audio_video"
+      split: "full"
+  
+  # Finetuning datasets  
+  finetune_datasets:
+    - name: "avec2016"
+      modality: "audio_video_text"
+    - name: "daic_woz"
+      modality: "audio_video_text"
+  
+  # Audio preprocessing
+  audio:
+    sample_rate: 16000
+    feature_type: "wav2vec2"     # or "mfcc", "egemaps"
+    feature_dim: 768
+    max_duration_sec: 10.0
+    frame_shift_ms: 10           # 100Hz frame rate for features
+  
+  # Video preprocessing
+  video:
+    fps: 25
+    face_detector: "mediapipe"   # or "mtcnn", "retinaface"
+    crop_face: true
+    resize: [224, 224]
+    feature_extractor: "vit"     # or "timesformer", "resnet3d"
+    feature_dim: 512
+
+logging:
+  wandb_project: "cancer-emotion-system"
+  log_every_n_steps: 100
+  eval_every_n_epochs: 1
+  save_every_n_epochs: 5

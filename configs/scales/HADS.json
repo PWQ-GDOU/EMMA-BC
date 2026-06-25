@@ -1,0 +1,31 @@
+{
+  "name": "HADS",
+  "fullName": "Hospital Anxiety and Depression Scale",
+  "purpose": "评估患者近一周的焦虑和抑郁状态，排除躯体症状干扰",
+  "itemsCount": 14,
+  "subscales": [
+    {
+      "name": "HADS-A",
+      "description": "焦虑亚量表",
+      "itemsCount": 7,
+      "reverseItems": [7]
+    },
+    {
+      "name": "HADS-D",
+      "description": "抑郁亚量表",
+      "itemsCount": 7,
+      "reverseItems": [2, 4, 6, 12]
+    }
+  ],
+  "scoring": {
+    "itemScoreRange": [0, 3],
+    "eachSubscaleRange": [0, 21],
+    "totalRange": [0, 42],
+    "totalInterpretation": "总分可用于综合心理困扰评估"
+  },
+  "interpretation": [
+    { "category": "正常", "range": [0, 7], "note": "亚量表得分" },
+    { "category": "可疑/轻度", "range": [8, 10], "note": "亚量表得分" },
+    { "category": "可能阳性（需临床关注）", "range": [11, 21], "note": "亚量表得分" }
+  ]
+}
