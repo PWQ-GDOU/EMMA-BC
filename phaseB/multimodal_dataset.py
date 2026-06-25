@@ -81,12 +81,13 @@ class DAICWOZDataset(Dataset):
         sample_rate: target audio sample rate
         max_audio_sec: maximum audio duration in seconds
     """
-    def __init__(self, data_dir, split="train", sample_rate=16000, max_audio_sec=600, min_audio_sec=1.0):
+    def __init__(self, data_dir, split="train", sample_rate=16000, max_audio_sec=600, min_audio_sec=1.0, filter_interviewer=False):
         self.data_dir = Path(data_dir)
         self.sample_rate = sample_rate
         self.max_samples = int(max_audio_sec * sample_rate)
         self.min_samples = int(getattr(self, 'min_audio_sec', 1.0) * sample_rate) if hasattr(self, 'min_audio_sec') else 16000
-        self.min_samples = int(min_audio_sec * sample_rate)  # Wav2Vec2 needs >= 6400 samples
+        self.min_samples = int(min_audio_sec * sample_rate)
+        self.filter_interviewer = filter_interviewer  # Wav2Vec2 needs >= 6400 samples
         self.split = split
 
         # Load PHQ-8 labels
@@ -145,6 +146,8 @@ class DAICWOZDataset(Dataset):
             return ""
         df = pd.read_csv(path)
         texts = df["Text"].dropna().tolist()
+        if self.filter_interviewer:
+            texts = [t for t in texts if not any(p in t.lower().strip() for p in self.ELLIE_PROMPTS)]
         return " ".join(texts)
 
     def __getitem__(self, idx):
@@ -201,7 +204,8 @@ class MODMADataset(Dataset):
         self.sample_rate = sample_rate
         self.max_samples = int(max_audio_sec * sample_rate)
         self.min_samples = int(getattr(self, 'min_audio_sec', 1.0) * sample_rate) if hasattr(self, 'min_audio_sec') else 16000
-        self.min_samples = int(min_audio_sec * sample_rate)  # Wav2Vec2 needs >= 6400 samples
+        self.min_samples = int(min_audio_sec * sample_rate)
+        self.filter_interviewer = filter_interviewer  # Wav2Vec2 needs >= 6400 samples
 
         # Load clinical labels
         self.labels_df = pd.read_excel(xlsx_path)
