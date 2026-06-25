@@ -321,6 +321,8 @@ def main():
                         help="Weight multiplier for RAVDESS samples (default 7.0 = 7442/1056)")
     parser.add_argument("--freeze_wav2vec2", action="store_true", default=True)
     parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--resume", type=str, default=None,
+                        help="Path to checkpoint to resume training from")
     args = parser.parse_args()
     
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
@@ -370,11 +372,24 @@ def main():
     
     # ── Training ──
     os.makedirs(args.checkpoint_dir, exist_ok=True)
+    start_epoch = 1
     best_acc = 0
     history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
     
-    print(f"\n═══ Training ({args.epochs} epochs) ═══")
-    for epoch in range(1, args.epochs + 1):
+    # Resume from checkpoint if specified
+    if args.resume:
+        print(f"\nResuming from {args.resume}")
+        ckpt = torch.load(args.resume, map_location=device, weights_only=True)
+        model.load_state_dict(ckpt["model_state_dict"])
+        optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+        scheduler.load_state_dict(ckpt["scheduler_state_dict"])
+        start_epoch = ckpt["epoch"] + 1
+        best_acc = ckpt.get("best_acc", 0)
+        history = ckpt.get("history", history)
+        print(f"Resumed at epoch {start_epoch}, best_acc={best_acc*100:.1f}%")
+    
+    print(f"\n═══ Training ({start_epoch} → {args.epochs}) ═══")
+    for epoch in range(start_epoch, args.epochs + 1):
         train_loss, train_acc = train_epoch(model, train_loader, optimizer, criterion, device, epoch, args.epochs)
         val_loss, val_acc, per_class = val_epoch(model, val_loader, criterion, device)
         
@@ -402,10 +417,26 @@ def main():
         
         # Save periodic
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args.checkpoint_dir, f"phaseA_epoch{epoch}.pt"))
+            torch.save({
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scheduler_state_dict": scheduler.state_dict(),
+                "val_acc": val_acc,
+                "best_acc": best_acc,
+                "history": history,
+            }, os.path.join(args.checkpoint_dir, f"phaseA_epoch{epoch}.pt"))
     
     # Final save
-    torch.save(model.state_dict(), os.path.join(args.checkpoint_dir, "phaseA_final.pt"))
+    torch.save({
+        "epoch": args.epochs,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict(),
+        "val_acc": val_acc,
+        "best_acc": best_acc,
+        "history": history,
+    }, os.path.join(args.checkpoint_dir, "phaseA_final.pt"))
     with open(os.path.join(args.checkpoint_dir, "history.json"), "w") as f:
         json.dump(history, f, indent=2)
     

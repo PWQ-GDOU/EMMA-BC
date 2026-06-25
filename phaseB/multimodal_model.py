@@ -263,6 +263,17 @@ class MultimodalFusion(nn.Module):
 # 4. Full Multimodal Clinical Model
 # ══════════════════════════════════════════════════════════
 
+
+
+# VRAM ESTIMATE
+# =============
+# wav2vec2-base (frozen):  ~1.2GB params + ~0.3GB activations @ batch=16
+# bert-base-uncased (frozen): ~0.4GB params + ~0.2GB activations
+# Fusion + heads (trainable): ~0.02GB params
+# Total trainable: ~5.9M params (~24MB) — safe for any GPU >= 4GB
+# Minimum recommended GPU: GTX 1080 (8GB) or better
+# 2080Ti (11GB): comfortable, can increase batch to 32
+
 class MultimodalClinicalModel(nn.Module):
     """
     End-to-end: Audio + Text → Clinical Scores.
@@ -289,6 +300,14 @@ class MultimodalClinicalModel(nn.Module):
         super().__init__()
         self.d_model = d_model
 
+        # Safety: verify freeze flags explicitly
+        if not freeze_audio_w2v:
+            print("\n*** WARNING: Unfreezing wav2vec2 (~320M params). VRAM usage will spike ***")
+            print("*** Ensure >= 24GB GPU before proceeding ***\n")
+        if not freeze_text_bert:
+            print("\n*** WARNING: Unfreezing BERT (~110M params). VRAM usage will spike ***")
+            print("*** Ensure >= 24GB GPU before proceeding ***\n")
+
         self.audio_encoder = AudioEncoder(
             d_model=d_model,
             n_layers=n_layers,
@@ -312,6 +331,10 @@ class MultimodalClinicalModel(nn.Module):
 
     def forward(self, waveform, texts, attention_mask=None):
         """
+        Cross-modal fusion: audio and text are independently
+        pooled to fixed [B, d_model] vectors, then concatenated.
+        No temporal alignment needed — safe for any input length.
+
         Args:
             waveform: [B, T_audio] raw 16kHz audio
             texts: List[str] batch of transcripts
@@ -330,8 +353,70 @@ class MultimodalClinicalModel(nn.Module):
         return {"total": total, "trainable": trainable}
 
 
+
+# ══════════════════════════════════════════════════════
+# 5. Metrics
+# ══════════════════════════════════════════════════════
+
+def concordance_correlation_coefficient(y_pred, y_true):
+    """
+    Concordance Correlation Coefficient (CCC) — DAIC-WOZ official metric.
+    
+    Formula: CCC = 2 * cov(x,y) / (var(x) + var(y) + (mean(x) - mean(y))^2)
+    
+    Uses unbiased variance (ddof=1) for consistency with literature baselines.
+    """
+    y_pred = y_pred.view(-1).float()
+    y_true = y_true.view(-1).float()
+    
+    mean_pred = y_pred.mean()
+    mean_true = y_true.mean()
+    
+    # Center the variables
+    x = y_pred - mean_pred
+    y = y_true - mean_true
+    
+    # Covariance and variances (unbiased, ddof=1)
+    n = y_pred.shape[0]
+    cov = torch.sum(x * y) / (n - 1)
+    var_pred = torch.sum(x * x) / (n - 1)
+    var_true = torch.sum(y * y) / (n - 1)
+    
+    denom = var_pred + var_true + (mean_pred - mean_true) ** 2
+    if denom < 1e-8:
+        return torch.tensor(0.0, device=y_pred.device)
+    
+    ccc = 2 * cov / denom
+    return torch.clamp(ccc, -1.0, 1.0)
+
+
+def regression_metrics(y_pred, y_true):
+    """Compute MAE, RMSE, Pearson r, and CCC."""
+    y_pred = y_pred.view(-1).float()
+    y_true = y_true.view(-1).float()
+    
+    mae = torch.abs(y_pred - y_true).mean()
+    rmse = torch.sqrt(((y_pred - y_true) ** 2).mean())
+    
+    # Pearson correlation
+    x = y_pred - y_pred.mean()
+    y = y_true - y_true.mean()
+    r_num = torch.sum(x * y)
+    r_den = torch.sqrt(torch.sum(x * x) * torch.sum(y * y))
+    r = r_num / (r_den + 1e-8)
+    
+    ccc = concordance_correlation_coefficient(y_pred, y_true)
+    
+    return {
+        "mae": mae.item(),
+        "rmse": rmse.item(),
+        "pearson_r": r.item(),
+        "ccc": ccc.item(),
+    }
+
+
 # ══════════════════════════════════════════════════════════
-# 5. Quick Test
+# 6. Quick Test
 # ══════════════════════════════════════════════════════════
 
 if __name__ == "__main__":

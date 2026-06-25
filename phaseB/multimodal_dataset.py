@@ -37,6 +37,10 @@ class DAICWOZDataset(Dataset):
     """
     DAIC-WOZ: clinical interview audio + transcript → PHQ-8 regression.
 
+    ⚠️ CRITICAL: Uses official per-participant splits only.
+    Never use random_split() on this dataset — it would leak participant
+    identity across train/val, inflating metrics by 20-30%.
+
     Args:
         data_dir: path to diac_woz/ (containing {id}_P.tar.gz, labels2019.tar.gz)
         split: "train", "dev", or "test" (official DAIC-WOZ splits)
@@ -294,6 +298,39 @@ def collate_modma(batch):
         "psqi": torch.stack(psqi_list),
         "subject_ids": sids,
     }
+
+
+
+    def split_by_subject(self, val_ratio=0.15, test_ratio=0.15, seed=42):
+        """
+        Split MODMA data by SUBJECT (not sample) to prevent data leakage.
+        Critical: same subject's recordings must NOT appear in train and val.
+        """
+        import random
+        rng = random.Random(seed)
+        subject_ids = sorted(set(s["subject_id"] for s in self.samples))
+        rng.shuffle(subject_ids)
+        
+        n_test = max(1, int(len(subject_ids) * test_ratio))
+        n_val = max(1, int(len(subject_ids) * val_ratio))
+        
+        test_ids = set(subject_ids[:n_test])
+        val_ids = set(subject_ids[n_test:n_test + n_val])
+        train_ids = set(subject_ids[n_test + n_val:])
+        
+        train_idx = [i for i, s in enumerate(self.samples) if s["subject_id"] in train_ids]
+        val_idx = [i for i, s in enumerate(self.samples) if s["subject_id"] in val_ids]
+        test_idx = [i for i, s in enumerate(self.samples) if s["subject_id"] in test_ids]
+        
+        print(f"[MODMA Subject Split] train={len(train_ids)} subjects ({len(train_idx)} samples), "
+              f"val={len(val_ids)} ({len(val_idx)} samples), test={len(test_ids)} ({len(test_idx)} samples)")
+        
+        from torch.utils.data import Subset
+        return (
+            Subset(self, train_idx),
+            Subset(self, val_idx),
+            Subset(self, test_idx),
+        )
 
 
 # ══════════════════════════════════════════════════════════
