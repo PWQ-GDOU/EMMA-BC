@@ -82,6 +82,14 @@ def detect_empty_text(text):
 
 
 @torch.no_grad()
+    """
+    Missing-modality fallback prediction.
+    
+    WARNING: Audio-only and text-only branches were NOT trained on
+    single-modality data. Fallback predictions may be unreliable.
+    For paper evaluation, only use complete dual-modality samples.
+    Single-modality fallback is a demo placeholder for future work.
+    """
 def predict_with_fallback(model, audio, transcript, attention_mask, device, 
                            confidence_threshold=0.5):
     """
@@ -129,10 +137,16 @@ def predict_with_fallback(model, audio, transcript, attention_mask, device,
 # ═══════════════════════════════════════════════════
 
 def enable_dropout(model):
-    """Enable dropout at inference time for MC-Dropout."""
+    """
+    MC-Dropout: re-enable Dropout while keeping BN/LN frozen.
+    model.eval() freezes ALL modules; this selectively re-enables Dropout.
+    BN/LN stay frozen to prevent stat drift during MC sampling.
+    """
     for module in model.modules():
         if isinstance(module, nn.Dropout):
             module.train()
+        elif isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm)):
+            module.eval()
 
 
 @torch.no_grad()
