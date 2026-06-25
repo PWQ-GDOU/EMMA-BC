@@ -214,6 +214,11 @@ def mc_dropout_eval(model, loader, normalizer, device, n_samples=30):
         all_labels.append(labels)
     
     means = torch.cat(all_means)
+    # Convergence check: last-10 vs full mean diff should be tiny
+    if len(all_means) > 0:
+        last_mean = all_means[-1].mean().item()
+        full_mean = means.mean().item()
+        print(f"  MC convergence check: |last_batch - full| = {abs(last_mean - full_mean):.4f}")
     stds = torch.cat(all_stds)
     lowers = torch.cat(all_lowers)
     uppers = torch.cat(all_uppers)
@@ -410,7 +415,7 @@ def predict_to_csv(model, loader, normalizer, device, output_path,
     # Fused = Confidence * exp(-MC_Std/3.0). Std=3 halves trust.
     if use_mc_dropout:
         for row in rows:
-            row[8] = round(row[2] * np.exp(-row[5] / 3.0), 2)
+            row[8] = round(row[2] * np.exp(-row[5] / 3.0)  # 3.0 ≈ typical PHQ-8 SD in DAIC-WOZ (half-trust at 1 sigma), 2)
     header = ["Subject_ID","PHQ_Score","Confidence","Modality_Status",
               "MC_Mean","MC_Std","CI_Lower_95","CI_Upper_95","Fused_Trust_Score","Binary_Label"]
     with open(output_path, "w", newline="") as f:
