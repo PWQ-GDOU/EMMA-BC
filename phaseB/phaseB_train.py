@@ -263,6 +263,28 @@ def main():
     os.makedirs(args.checkpoint_dir, exist_ok=True)
     history = []
     
+    # Create DataLoaders AFTER resume for correct generator seed
+    gen = torch.Generator().manual_seed(args.seed + start_epoch)
+    train_loader = DataLoader(
+        train_ds, batch_size=args.batch_size, shuffle=True,
+        collate_fn=collate_daic, num_workers=args.num_workers,
+        pin_memory=True, generator=gen, drop_last=True,
+    )
+    val_loader = DataLoader(
+        val_ds, batch_size=args.batch_size, shuffle=False,
+        collate_fn=collate_daic, num_workers=min(2, args.num_workers),
+        pin_memory=True,
+    )
+    print(f"Train: {len(train_ds)}, Val: {len(val_ds)}")
+
+    # Compute label statistics on first run only
+    if not args.resume or normalizer.mean is None:
+        print("\n═══ Computing label stats ═══")
+        all_train_labels = []
+        for batch in train_loader:
+            all_train_labels.append(batch["phq_total"])
+        normalizer.fit(torch.cat(all_train_labels))
+
     print(f"\n═══ Training ({start_epoch} \u2192 {args.epochs}) ═══")
     for epoch in range(start_epoch, args.epochs + 1):
         train_loss = train_epoch(model, train_loader, normalizer, optimizer, device, epoch, args.epochs)
