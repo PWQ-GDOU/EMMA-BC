@@ -415,7 +415,7 @@ def main():
         start_epoch = ckpt["epoch"] + 1
         best_acc = ckpt.get("best_acc", 0)
         history = ckpt.get("history", history)
-                print(f"Resumed at epoch {start_epoch}, best_acc={best_acc*100:.1f}%")
+        print(f"Resumed at epoch {start_epoch}, best_acc={best_acc*100:.1f}%")
         # If user specified --lr, override scheduler's saved LR
         if args.lr != parser.get_default("lr"):
             print(f"Note: --lr={args.lr} overrides checkpoint LR — resetting scheduler")
