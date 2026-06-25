@@ -321,7 +321,7 @@ def main():
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--n_heads", type=int, default=8)
     parser.add_argument("--checkpoint_dir", type=str, default="checkpoints/phaseA")
-    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--num_workers", type=int, default=2, help="min(4,CPU/2). torchaudio I/O contention")
     parser.add_argument("--ravdess_weight", type=float, default=7.0,
                         help="Weight multiplier for RAVDESS samples (default 7.0 = 7442/1056)")
     parser.add_argument("--freeze_wav2vec2", action="store_true", default=True)
@@ -388,6 +388,10 @@ def main():
         model.load_state_dict(ckpt["model_state_dict"])
         optimizer.load_state_dict(ckpt["optimizer_state_dict"])
         scheduler.load_state_dict(ckpt["scheduler_state_dict"])
+        if "global_step" in ckpt:
+            for _ in range(ckpt["global_step"]):
+                scheduler.step()
+            print(f"Scheduler steps restored: {ckpt['global_step']}")
         start_epoch = ckpt["epoch"] + 1
         best_acc = ckpt.get("best_acc", 0)
         history = ckpt.get("history", history)
@@ -398,7 +402,11 @@ def main():
             for g in optimizer.param_groups:
                 g["lr"] = args.lr
             scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
-            scheduler.load_state_dict(ckpt["scheduler_state_dict"])  # keep last step
+            scheduler.load_state_dict(ckpt["scheduler_state_dict"])
+        if "global_step" in ckpt:
+            for _ in range(ckpt["global_step"]):
+                scheduler.step()
+            print(f"Scheduler steps restored: {ckpt['global_step']}")  # keep last step
         # If user specified --epochs < checkpoint epoch, warn
         if args.epochs <= start_epoch:
             print(f"WARNING: --epochs={args.epochs} <= resumed epoch {start_epoch}. No new training.")
