@@ -22,6 +22,7 @@ from collections import defaultdict
 import numpy as np
 import torch
 import pandas as pd
+from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from phaseB.multimodal_model import MultimodalClinicalModel, regression_metrics, set_seed
@@ -64,6 +65,14 @@ ELLIE_PATTERNS = [
 
 def filter_interviewer_text(transcript_path, keep_threshold=0.0):
     """
+    Filter Ellie prompts from DAIC-WOZ transcript.
+    
+    WARNING: Keyword matching may false-positive on patient speech that
+    quotes the interviewer. Use filter_interviewer=False for final
+    evaluation unless you verify the filtered text retains context.
+    """
+
+    """
     Filter Ellie (interviewer) prompts from DAIC-WOZ transcript.
     
     DAIC-WOZ transcripts have no speaker labels — Ellie's questions and 
@@ -93,56 +102,44 @@ def filter_interviewer_text(transcript_path, keep_threshold=0.0):
 # ═══════════════════════════════════════════════════
 
 @torch.no_grad()
-def permutation_importance(model, loader, normalizer, device, n_permutations=5):
+def permutation_importance(model, loader, normalizer, device, n_permutations=10):
     """
-    Compute feature importance by permuting each modality separately.
-    
-    Measures how much MAE increases when each modality input is destroyed.
-    Higher MAE increase = more important modality.
+    Fast permutation importance using cached embeddings.
+    Only wav2vec2+BERT are computed once; permutations re-run only the fusion head.
     """
-    import random
+    # Cache embeddings once
+    a_feats, t_feats, labels = cache_embeddings(model, loader, device)
     
-    # Baseline: unpermuted
-    base_preds, base_labels = get_predictions(model, loader, normalizer, device)
-    base_mae = torch.abs(base_preds - base_labels).mean().item()
+    # Baseline
+    base_preds = predict_from_cache(model, a_feats, t_feats, device)
+    base_mae = torch.abs(base_preds - labels).mean().item()
+    results = {"baseline_mae": base_mae}
     
-    results = {}
+    norm_mean = normalizer.mean.to(device) if normalizer.mean is not None else 0
+    norm_std = normalizer.std.to(device) if normalizer.std is not None else 1
     
-    # Audio modality importance
-    audio_maes = []
-    for _ in range(n_permutations):
-        preds, labels = get_predictions(model, loader, normalizer, device,
-                                         permute_modality="audio")
-        audio_maes.append(torch.abs(preds - labels).mean().item())
-    results["audio"] = {"mae": np.mean(audio_maes), "delta": np.mean(audio_maes) - base_mae}
+    for mod_name in ["audio", "text", "both"]:
+        maes = []
+        for _ in range(n_permutations):
+            preds = predict_from_cache(model, a_feats, t_feats, device, permute_modality=mod_name)
+            denorm_preds = preds * norm_std[0].cpu() + norm_mean[0].cpu()
+            mae = torch.abs(denorm_preds - labels).mean().item()
+            maes.append(mae)
+        results[mod_name] = {"mae": np.mean(maes), "delta": np.mean(maes) - base_mae}
     
-    # Text modality importance
-    text_maes = []
-    for _ in range(n_permutations):
-        preds, labels = get_predictions(model, loader, normalizer, device,
-                                         permute_modality="text")
-        text_maes.append(torch.abs(preds - labels).mean().item())
-    results["text"] = {"mae": np.mean(text_maes), "delta": np.mean(text_maes) - base_mae}
-    
-    # Both permuted (random baseline)
-    both_maes = []
-    for _ in range(n_permutations):
-        preds, labels = get_predictions(model, loader, normalizer, device,
-                                         permute_modality="both")
-        both_maes.append(torch.abs(preds - labels).mean().item())
-    results["both"] = {"mae": np.mean(both_maes), "delta": np.mean(both_maes) - base_mae}
-    
-    results["baseline_mae"] = base_mae
     return results
 
 
 @torch.no_grad()
-def get_predictions(model, loader, normalizer, device, permute_modality=None):
-    """Get model predictions, optionally permuting a modality."""
-    all_preds = []
-    all_labels = []
+def cache_embeddings(model, loader, device):
+    """
+    Precompute audio+text embeddings to avoid recomputing wav2vec2+BERT
+    for every permutation iteration (saves hours).
+    """
+    print("Caching embeddings (one-time wav2vec2+BERT forward pass)...")
+    audio_feats, text_feats, all_labels = [], [], []
     
-    for batch in loader:
+    for batch in tqdm(loader, desc="Cache"):
         audio = batch["audio"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         texts = batch["texts"]
@@ -153,26 +150,43 @@ def get_predictions(model, loader, normalizer, device, permute_modality=None):
         if attention_mask.sum() < 1:
             continue
         
-        # Permute: shuffle inputs to destroy modality-specific information
-        if permute_modality == "audio":
-            idx = torch.randperm(audio.shape[0])
-            audio = audio[idx]
-        elif permute_modality == "text":
-            idx = torch.randperm(len(texts))
-            texts = [texts[i] for i in idx]
-        elif permute_modality == "both":
-            idx_a = torch.randperm(audio.shape[0])
-            audio = audio[idx_a]
-            idx_t = torch.randperm(len(texts))
-            texts = [texts[i] for i in idx_t]
+        a_emb = model.audio_encoder(audio, attention_mask)  # [B, d_model]
+        t_emb = model.text_encoder(texts, device)           # [B, d_model]
         
-        outputs = model(audio, texts, attention_mask=attention_mask)
-        preds = outputs["phq"].squeeze(-1)
-        
-        all_preds.append(preds)
-        all_labels.append(labels)
+        audio_feats.append(a_emb.cpu())
+        text_feats.append(t_emb.cpu())
+        all_labels.append(labels.cpu())
     
-    return torch.cat(all_preds), torch.cat(all_labels)
+    return torch.cat(audio_feats), torch.cat(text_feats), torch.cat(all_labels)
+
+
+@torch.no_grad()
+def predict_from_cache(model, audio_feats, text_feats, device, permute_modality=None):
+    """
+    Predict using cached embeddings (only fusion head runs).
+    For permutation: shuffle indices to destroy modality-specific signal.
+    """
+    B = audio_feats.shape[0]
+    idx = torch.arange(B)
+    
+    if permute_modality == "audio":
+        idx = torch.randperm(B)
+        audio_feats = audio_feats[idx]
+    elif permute_modality == "text":
+        idx = torch.randperm(B)
+        text_feats = text_feats[idx]
+    elif permute_modality == "both":
+        idx_a, idx_t = torch.randperm(B), torch.randperm(B)
+        audio_feats = audio_feats[idx_a]
+        text_feats = text_feats[idx_t]
+    
+    audio_feats = audio_feats.to(device)
+    text_feats = text_feats.to(device)
+    
+    # Bypass heavy encoders, only run fusion head
+    outputs = model.fusion_head(audio_feats, text_feats)
+    preds = outputs["phq"].squeeze(-1)
+    return preds.cpu()
 
 
 # ═══════════════════════════════════════════════════
@@ -263,13 +277,19 @@ def subgroup_analysis(model, loader, normalizer, device, metadata_csv):
     
     summary = {}
     for group, data in results.items():
-        if len(data["preds"]) < 3:
+        n = len(data["preds"])
+        if n < 3:
+            summary[group] = {"n": n, "mae": None, "warning": "N < 3, skipped"}
             continue
         preds = torch.tensor(data["preds"])
         labels = torch.tensor(data["labels"])
         denorm_preds = preds * normalizer.std[0] + normalizer.mean[0]
         mae = torch.abs(denorm_preds - labels).mean().item()
-        summary[group] = {"n": len(data["preds"]), "mae": round(mae, 2)}
+        std = torch.abs(denorm_preds - labels).std().item()
+        summary[group] = {
+            "n": n, "mae": round(mae, 2), "std": round(std, 2),
+            "warning": "N < 10 — exploratory only, DO NOT over-interpret" if n < 10 else None,
+        }
     
     return summary
 
