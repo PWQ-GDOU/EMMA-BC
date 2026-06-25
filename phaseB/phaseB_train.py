@@ -149,6 +149,12 @@ def val_epoch(model, loader, normalizer, device):
 # Main
 # ═══════════════════════════════════════════
 
+
+# ======== DAIC-WOZ TEST PROTOCOL ========
+# Official test labels are HIDDEN — submit predictions to EvalAI for scoring.
+# Never compute metrics on official test split locally.
+#   Train: split="train"  |  Val: split_val_from_train(val_ratio=0.15)
+#   Test:  split="test"   |  predict only, output CSV for submission
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str, default="/data/disk1/datasets/diac_woz")
@@ -220,12 +226,20 @@ def main():
     print(f"Params: {params['total']:,} total, {params['trainable']:,} trainable")
     
     # ── 3. Optimizer (CRITICAL Fix 1: filter requires_grad) ──
+    # No weight decay on bias/LayerNorm — grouped params for small fusion head
+    no_decay = ["bias", "LayerNorm.weight", "layernorm.weight"]
+    optimizer_grouped = [
+        {"params": [p for n, p in model.named_parameters()
+                    if p.requires_grad and not any(nd in n for nd in no_decay)],
+         "weight_decay": 0.01},
+        {"params": [p for n, p in model.named_parameters()
+                    if p.requires_grad and any(nd in n for nd in no_decay)],
+         "weight_decay": 0.0},
+    ]
+    optimizer = AdamW(optimizer_grouped, lr=args.lr)
+    
     # DO NOT use model.parameters() — it allocates gradient memory for frozen params
-    optimizer = AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=args.lr,
-        weight_decay=0.01,
-    )
+    
     scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=1e-6)
     
     # ── 4. Resume (CRITICAL Fix 4: full state restoration) ──
