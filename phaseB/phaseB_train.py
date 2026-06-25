@@ -151,6 +151,14 @@ def val_epoch(model, loader, normalizer, device):
         pred_mean=norm_mean[0] if norm_mean is not None else None,
         pred_std=norm_std[0] if norm_std is not None else None,
     )
+    # Clinical binary classification (PHQ-8 >= 10 threshold)
+    denorm_preds = preds * norm_std[0] + norm_mean[0] if norm_mean is not None else preds
+    denorm_labels = labels * norm_std[0] + norm_mean[0] if norm_mean is not None else labels
+    pred_bin = (denorm_preds >= 10.0).float()
+    label_bin = (denorm_labels >= 10.0).float()
+    tp = ((pred_bin == 1) & (label_bin == 1)).sum().item()
+    metrics["sensitivity"] = tp / (label_bin.sum() + 1e-8)
+    metrics["specificity"] = ((pred_bin == 0) & (label_bin == 0)).sum().item() / ((label_bin == 0).sum() + 1e-8)
     metrics["loss"] = losses / n_batches
     return metrics
 
@@ -329,7 +337,7 @@ def main():
         history.append(info)
         
         print(f"  Train Loss: {train_loss:.4f}")
-        print(f"  Val   MAE:  {metrics['mae']:.3f}  |  RMSE: {metrics['rmse']:.3f}  |  CCC: {metrics['ccc']:.3f}")
+        print(f"  Val   MAE:  {metrics["mae"]:.3f}  |  RMSE: {metrics["rmse"]:.3f}  |  CCC: {metrics["ccc"]:.3f}  |  Sens: {metrics.get("sensitivity", 0):.3f}  Spec: {metrics.get("specificity", 0):.3f}")
         
         # Save best (by CCC)
         if metrics["mae"] < best_mae:
