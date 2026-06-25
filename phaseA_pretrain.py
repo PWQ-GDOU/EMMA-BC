@@ -414,6 +414,9 @@ def main():
         if args.epochs <= start_epoch:
             print(f"WARNING: --epochs={args.epochs} <= resumed epoch {start_epoch}. No new training.")
     
+    # Fix: freeze wav2vec2 to eval mode (BN/LN stats do not drift)
+    model.wav2vec2.eval()
+
     print(f"\n═══ Training ({start_epoch} → {args.epochs}) ═══")
     for epoch in range(start_epoch, args.epochs + 1):
         train_loss, train_acc = train_epoch(model, train_loader, optimizer, criterion, device, epoch, args.epochs)
