@@ -103,7 +103,10 @@ class EmotionDataset(Dataset):
     
     def __getitem__(self, idx):
         path, label, _ = self.samples[idx]
-        waveform, sr = sf.read(path)
+        try:
+            waveform, sr = sf.read(path)
+        except Exception as e:
+            raise RuntimeError(f"Failed to read audio: {path}") from e
         
         # Convert to torch and mono
         waveform = torch.from_numpy(waveform).float()
