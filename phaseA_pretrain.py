@@ -59,6 +59,12 @@ CREMAD_EMO = {"NEU": "neutral", "HAP": "happy", "SAD": "sad",
 # Dataset
 # ═══════════════════════════════════════════════════════
 
+# Prevent CUDA multiprocessing deadlock on Linux (DataLoader workers)
+import torch.multiprocessing as mp
+try:
+    mp.set_start_method('spawn', force=True)
+except RuntimeError:
+    pass  # already set
 class EmotionDataset(Dataset):
     """Load RAVDESS + CREMA-D WAV files with emotion labels."""
     

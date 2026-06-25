@@ -45,6 +45,12 @@ from multimodal_dataset import (
 # Label normalization
 # ═══════════════════════════════════════════
 
+# Prevent CUDA multiprocessing deadlock on Linux (DataLoader workers)
+import torch.multiprocessing as mp
+try:
+    mp.set_start_method('spawn', force=True)
+except RuntimeError:
+    pass  # already set
 class LabelNormalizer:
     """Z-score normalize labels. Store mean/std for de-normalization at eval time."""
     def __init__(self):

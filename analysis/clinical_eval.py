@@ -381,7 +381,6 @@ def predict_to_csv(model, loader, normalizer, device, output_path,
     MC_Mean, MC_Std, CI_Lower_95, CI_Upper_95, Fused_Trust_Score"""
     import csv
     rows = []
-    max_mc_std = 0.0
     model.eval()
     for batch in tqdm(loader, desc="Predict CSV"):
         audio = batch["audio"].to(device)
@@ -402,15 +401,18 @@ def predict_to_csv(model, loader, normalizer, device, output_path,
                 mc_std = mc_result["std"][0].item() * ns
                 ci_lo = mc_result["ci_lower"][0].item() * ns + nm
                 ci_hi = mc_result["ci_upper"][0].item() * ns + nm
-                max_mc_std = max(max_mc_std, mc_std)
-                rows.append([pid, pred, conf, flag, mc_mean, mc_std, ci_lo, ci_hi, 0.0])
+                bl = "DEPRESSED" if pred >= 10 else "NON-DEPRESSED"
+                rows.append([pid, pred, conf, flag, mc_mean, mc_std, ci_lo, ci_hi, 0.0, bl])
             else:
-                rows.append([pid, round(pred,2), round(conf,2), flag])
-    if use_mc_dropout and max_mc_std > 0:
+                bl = "DEPRESSED" if pred >= 10 else "NON-DEPRESSED"
+            rows.append([pid, round(pred,2), round(conf,2), flag, bl])
+    # Exponential-decay trust: robust to OOD (no max_std dependency)
+    # Fused = Confidence * exp(-MC_Std/3.0). Std=3 halves trust.
+    if use_mc_dropout:
         for row in rows:
-            row[8] = round(row[2] * (1.0 - row[5] / max_mc_std), 2)
+            row[8] = round(row[2] * np.exp(-row[5] / 3.0), 2)
     header = ["Subject_ID","PHQ_Score","Confidence","Modality_Status",
-              "MC_Mean","MC_Std","CI_Lower_95","CI_Upper_95","Fused_Trust_Score"]
+              "MC_Mean","MC_Std","CI_Lower_95","CI_Upper_95","Fused_Trust_Score","Binary_Label"]
     with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(header)
