@@ -284,15 +284,22 @@ class MODMADataset(Dataset):
 # ══════════════════════════════════════════════════════════
 
 def collate_daic(batch):
-    """Collate DAIC-WOZ batch (audio pre-padded to uniform length in _load_audio)."""
+    """Collate DAIC-WOZ batch with explicit audio attention_mask.
+    mask shape [B, T]: 1.0=valid audio, 0.0=zero-padding."""
     audio_list = []
+    mask_list = []
     texts = []
     phq_totals = []
     phq_items_list = []
     pids = []
 
     for item in batch:
-        audio_list.append(item["audio"])
+        audio = item["audio"]
+        L = audio.shape[0]
+        audio_list.append(audio)
+        # Generate mask: 1.0 for valid samples, 0.0 for padding
+        mask = torch.ones(L)
+        mask_list.append(mask)
         texts.append(item["transcript"])
         phq_totals.append(item["phq_total"])
         phq_items_list.append(item["phq_items"])
@@ -300,6 +307,7 @@ def collate_daic(batch):
 
     return {
         "audio": torch.stack(audio_list),
+        "attention_mask": torch.stack(mask_list),  # [B, T] float
         "texts": texts,
         "phq_total": torch.stack(phq_totals),
         "phq_items": torch.stack(phq_items_list),
@@ -308,8 +316,9 @@ def collate_daic(batch):
 
 
 def collate_modma(batch):
-    """Collate MODMA batch (audio pre-padded to uniform length in _load_audio)."""
+    """Collate MODMA batch with explicit audio attention_mask."""
     audio_list = []
+    mask_list = []
     texts = []
     phq_list = []
     gad_list = []
@@ -317,7 +326,11 @@ def collate_modma(batch):
     sids = []
 
     for item in batch:
-        audio_list.append(item["audio"])
+        audio = item["audio"]
+        L = audio.shape[0]
+        audio_list.append(audio)
+        mask = torch.ones(L)
+        mask_list.append(mask)
         texts.append(item["transcript"])
         phq_list.append(item["phq"])
         gad_list.append(item["gad"])
@@ -326,6 +339,7 @@ def collate_modma(batch):
 
     return {
         "audio": torch.stack(audio_list),
+        "attention_mask": torch.stack(mask_list),  # [B, T] float
         "texts": texts,
         "phq": torch.stack(phq_list),
         "gad": torch.stack(gad_list),

@@ -199,11 +199,16 @@ class AudioEmotionEncoder(nn.Module):
         self.d_model = d_model
     
     def forward(self, waveform, attention_mask=None):
+        # attention_mask: [B, T] float tensor (1.0=valid, 0.0=pad)
+        # wav2vec2 accepts attention_mask as [B, T] float mask directly
         B = waveform.shape[0]
         
         # wav2vec2 feature extraction
         with torch.set_grad_enabled(not all(p.requires_grad == False for p in self.wav2vec2.parameters())):
-            w2v_out = self.wav2vec2(waveform, attention_mask=attention_mask)
+            w2v_out = self.wav2vec2(
+            waveform,
+            attention_mask=attention_mask  # [B, T] float, passed directly
+        )
             features = w2v_out.last_hidden_state  # [B, T_w2v, 768]
         
         # Temporal conv: [B, T_w2v, 768] → [B, 768, T_w2v] → [B, d_model, T_conv]
