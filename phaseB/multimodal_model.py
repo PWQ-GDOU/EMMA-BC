@@ -135,9 +135,12 @@ class AudioEncoder(nn.Module):
         features = self.transformer(features) # [B, T_conv, d_model]
         # Masked mean: exclude zero-padded frames from pooling
         if attention_mask is not None:
-            # Downsample mask to match conv output temporal resolution (4x downsample)
-            mask_conv = attention_mask[:, ::4][:, :features.shape[1]]
-            mask_float = mask_conv.float().unsqueeze(-1)  # [B, T_conv, 1]
+            # Wav2Vec2 downsamples ~320x, conv 4x -> total ~1280x -> compute exact factor
+            T_audio = attention_mask.shape[1]
+            T_feat = features.shape[1]
+            ds_factor = max(1, T_audio // T_feat)
+            mask_conv = attention_mask[:, ::ds_factor][:, :T_feat]
+            mask_float = mask_conv.unsqueeze(-1)
             pooled = (features * mask_float).sum(dim=1) / mask_float.sum(dim=1).clamp(min=1)
         else:
             pooled = features.mean(dim=1)

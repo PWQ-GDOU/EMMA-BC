@@ -225,8 +225,17 @@ class AudioEmotionEncoder(nn.Module):
         # Transformer
         features = self.transformer(features)  # [B, T', d_model]
         
-        # Pool: mean over time
-        pooled = features.mean(dim=1)  # [B, d_model]
+        # Masked mean pool: exclude zero-padded frames using attention_mask
+        # Wav2Vec2 downsamples ~320x, conv 4x -> total ~1280x -> compute exact factor
+        if attention_mask is not None:
+            T_audio = attention_mask.shape[1]
+            T_feat = features.shape[1]
+            ds_factor = max(1, T_audio // T_feat)
+            mask_ds = attention_mask[:, ::ds_factor][:, :T_feat]
+            mask_f = mask_ds.unsqueeze(-1)  # [B, T_feat, 1]
+            pooled = (features * mask_f).sum(dim=1) / mask_f.sum(dim=1).clamp(min=1)
+        else:
+            pooled = features.mean(dim=1)  # [B, d_model]
         
         # Classify
         logits = self.classifier(pooled)
