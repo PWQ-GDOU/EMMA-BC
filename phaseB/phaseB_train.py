@@ -180,6 +180,8 @@ def main():
     parser.add_argument("--resume", type=str, default=None)
     parser.add_argument("--val_split", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--patience", type=int, default=10,
+                        help="Early stopping patience. 0 = disabled")
     args = parser.parse_args()
     
     # Seed everything
@@ -256,6 +258,7 @@ def main():
     start_epoch = 1
     best_ccc = -1.0
     best_mae = float('inf')
+    patience_counter = 0
     
     if args.resume and os.path.exists(args.resume):
         print(f"\n═══ Resuming from {args.resume} ═══")
@@ -268,6 +271,7 @@ def main():
         start_epoch = ckpt["epoch"] + 1
         best_ccc = ckpt.get("best_ccc", -1.0)
         best_mae = ckpt.get("best_mae", float('inf'))
+        patience_counter = 0  # reset on resume
         
         # Restore warmup step count
         if "global_step" in ckpt:
@@ -313,6 +317,8 @@ def main():
     for epoch in range(start_epoch, args.epochs + 1):
         train_loss = train_epoch(model, train_loader, normalizer, optimizer, device, epoch, args.epochs)
         metrics = val_epoch(model, val_loader, normalizer, device)
+        # Epoch-level scheduler (CosineAnnealingWarmRestarts is epoch-based).
+        # Skipped batches in train_epoch do NOT affect scheduler timing.
         scheduler.step()
         
         info = {
@@ -329,6 +335,7 @@ def main():
         if metrics["mae"] < best_mae:
             best_mae = metrics["mae"]
             best_ccc = metrics["ccc"]
+            patience_counter = 0
             torch.save({
                 "epoch": epoch,
                 "model_state_dict": model.state_dict(),
@@ -337,11 +344,17 @@ def main():
                 "label_normalizer": normalizer.state_dict(),
                 "best_mae": best_mae,
                 "best_ccc": best_ccc,
+                "patience_counter": patience_counter,
                 "global_step": (epoch - 1) * len(train_loader),
                 "history": history,
                 "config": {k: v for k, v in vars(args).items() if not k.startswith("_")},
             }, os.path.join(args.checkpoint_dir, "phaseB_best.pt"))
-            print(f"  \u2713 Best checkpoint (MAE={best_mae:.3f}, CCC={best_ccc:.4f})")
+            print(f"  \u2713 Best (MAE={best_mae:.3f}, CCC={best_ccc:.4f})")
+        else:
+            patience_counter += 1
+            if args.patience > 0 and patience_counter >= args.patience:
+                print(f"\nEarly stopping at epoch {epoch} (no improvement for {args.patience} epochs)")
+                break
         
         # Save latest
         torch.save({
