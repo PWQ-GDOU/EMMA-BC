@@ -155,12 +155,12 @@ def val_epoch(model, loader, normalizer, device):
     # CRITICAL: de-normalize BEFORE computing metrics
     metrics = regression_metrics(
         preds, labels,
-        pred_mean=norm_mean[0] if norm_mean is not None else None,
-        pred_std=norm_std[0] if norm_std is not None else None,
+        pred_mean=norm_mean.view(-1)[0] if norm_mean is not None else None,
+        pred_std=norm_std.view(-1)[0] if norm_std is not None else None,
     )
     # Clinical binary classification (PHQ-8 >= 10 threshold)
-    denorm_preds = preds * norm_std[0] + norm_mean[0] if norm_mean is not None else preds
-    denorm_labels = labels * norm_std[0] + norm_mean[0] if norm_mean is not None else labels
+    denorm_preds = preds * norm_std.view(-1)[0] + norm_mean.view(-1)[0] if norm_mean is not None else preds
+    denorm_labels = labels * norm_std.view(-1)[0] + norm_mean.view(-1)[0] if norm_mean is not None else labels
     pred_bin = (denorm_preds >= 10.0).float()
     label_bin = (denorm_labels >= 10.0).float()
     tp = ((pred_bin == 1) & (label_bin == 1)).sum().item()

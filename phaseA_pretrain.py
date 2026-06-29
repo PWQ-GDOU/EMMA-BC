@@ -178,6 +178,10 @@ class AudioEmotionEncoder(nn.Module):
         if freeze_wav2vec2:
             for param in self.wav2vec2.parameters():
                 param.requires_grad = False
+            # Unfreeze last 2 encoder layers for fine-tuning
+            for layer in self.wav2vec2.encoder.layers[-2:]:
+                for param in layer.parameters():
+                    param.requires_grad = True
         
         # Temporal convolution (reduce frame rate)
         self.tconv = nn.Sequential(
@@ -235,13 +239,10 @@ class AudioEmotionEncoder(nn.Module):
         # Masked mean pool: exclude zero-padded frames using attention_mask
         # Wav2Vec2 downsamples ~320x, conv 4x -> total ~1280x -> compute exact factor
         if attention_mask is not None:
-            if mask_w2v is not None and mask_w2v.shape[1] > 0:
-                mask_ds = mask_w2v[:, ::4][:, :features.shape[1]]
-            else:
-                ds_factor = max(1, attention_mask.shape[1] // features.shape[1])
-                mask_ds = attention_mask[:, ::ds_factor][:, :features.shape[1]]
+            ds_factor = max(1, attention_mask.shape[1] // features.shape[1])
+            mask_ds = attention_mask[:, ::ds_factor][:, :features.shape[1]]
             mask_f = mask_ds.unsqueeze(-1)  # [B, T_feat, 1]
-            pooled = (features * mask_f).sum(dim=1) / mask_f.sum(dim=1).clamp(min=1e-6)  # avoid div by zero for all-pad samples
+            pooled = (features * mask_f).sum(dim=1) / mask_f.sum(dim=1).clamp(min=1e-6)
         else:
             pooled = features.mean(dim=1)  # [B, d_model]
         
@@ -364,13 +365,9 @@ def main():
     generator = torch.Generator().manual_seed(42)
     train_ds, val_ds = torch.utils.data.random_split(dataset, [n_train, n_val], generator=generator)
     
-    # Weighted sampling to balance RAVDESS (few) vs CREMA-D (many)
-    all_weights = dataset.get_sample_weights(ravdess_weight=args.ravdess_weight)
-    train_weights = [all_weights[i] for i in train_ds.indices]
-    sampler = WeightedRandomSampler(train_weights, num_samples=len(train_weights), replacement=True)
-    train_loader = DataLoader(train_ds, batch_size=args.batch_size, sampler=sampler,
+    # Plain shuffle (no weighted sampling — pure RAVDESS only)
+    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,
                               collate_fn=collate_fn, num_workers=args.num_workers, pin_memory=True)
-    print(f"  RAVDESS weight: {args.ravdess_weight}x | Effective samples/epoch: {len(train_weights)}")
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False,
                             collate_fn=collate_fn, num_workers=args.num_workers, pin_memory=True)
     
@@ -430,9 +427,6 @@ def main():
         # If user specified --epochs < checkpoint epoch, warn
         if args.epochs <= start_epoch:
             print(f"WARNING: --epochs={args.epochs} <= resumed epoch {start_epoch}. No new training.")
-    
-    # Fix: freeze wav2vec2 to eval mode (BN/LN stats do not drift)
-    model.wav2vec2.eval()
 
     print(f"\n═══ Training ({start_epoch} → {args.epochs}) ═══")
     for epoch in range(start_epoch, args.epochs + 1):

@@ -79,7 +79,7 @@ class AudioEncoder(nn.Module):
 
         # Temporal convolution (downsample)
         self.tconv = nn.Sequential(
-            nn.Conv1d(d_model, d_model, kernel_size=3, padding=1),
+            nn.Conv1d(d_w2v, d_model, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.Conv1d(d_model, d_model, kernel_size=3, padding=1, stride=2),
             nn.ReLU(),
@@ -103,12 +103,14 @@ class AudioEncoder(nn.Module):
         if pretrained_path is not None:
             ckpt = torch.load(pretrained_path, map_location="cpu", weights_only=True)
             state = ckpt["model_state_dict"] if "model_state_dict" in ckpt else ckpt
-            # Filter to audio encoder keys only
-            audio_state = {
-                k.replace("wav2vec2.", ""): v
-                for k, v in state.items()
-                if k.startswith(("wav2vec2.", "input_proj.", "tconv.", "transformer.", "pos_enc."))
-            }
+            # Filter to audio encoder keys (exclude classifier, optimizer, history)
+            EXCLUDE = ("classifier.", "optimizer", "history", "scheduler", "normalizer", "best_")
+            audio_state = {}
+            for k, v in state.items():
+                if any(k.startswith(x) for x in EXCLUDE):
+                    continue
+                if k.startswith(("wav2vec2.", "tconv.", "transformer.", "pos_enc.")):
+                    audio_state[k] = v
             if audio_state:
                 missing, unexpected = self.load_state_dict(audio_state, strict=False)
                 print(f"[AudioEncoder] Loaded pretrained: {len(audio_state)} params, {len(missing)} missing, {len(unexpected)} unexpected")
@@ -128,8 +130,7 @@ class AudioEncoder(nn.Module):
             features = w2v_out.last_hidden_state
             mask_w2v = w2v_out.attention_mask if hasattr(w2v_out, 'attention_mask') else None  # [B, T_w2v, 768]
 
-        features = self.input_proj(features)  # [B, T_w2v, d_model]
-        features = features.transpose(1, 2)   # [B, d_model, T_w2v]
+        features = features.transpose(1, 2)   # [B, d_w2v, T_w2v]
         features = self.tconv(features)       # [B, d_model, T_conv]
         features = features.transpose(1, 2)   # [B, T_conv, d_model]
         features = self.pos_enc(features)
@@ -318,21 +319,6 @@ class MultimodalClinicalModel(nn.Module):
         super().__init__()
         self.d_model = d_model
 
-        # --- BatchNorm Freeze ---
-        # requires_grad=False does NOT stop BatchNorm running stats.
-        # Must explicitly set frozen modules to eval mode.
-        if freeze_audio_w2v:
-            self.audio_encoder.wav2vec2.eval()
-        if freeze_text_bert:
-            self.text_encoder.bert.eval()
-
-        # Safety: verify freeze flags explicitly
-        if not freeze_audio_w2v:
-            print("\n*** WARNING: Unfreezing wav2vec2 (~320M params). VRAM usage will spike ***")
-            print("*** Ensure >= 24GB GPU before proceeding ***\n")
-        if not freeze_text_bert:
-            print("\n*** WARNING: Unfreezing BERT (~110M params). VRAM usage will spike ***")
-            print("*** Ensure >= 24GB GPU before proceeding ***\n")
 
         self.audio_encoder = AudioEncoder(
             d_model=d_model,
@@ -354,6 +340,18 @@ class MultimodalClinicalModel(nn.Module):
             n_tasks=n_tasks,
             fusion_dropout=dropout,
         )
+
+        # --- BatchNorm Freeze (#324-327 moved here) ---
+        if freeze_audio_w2v:
+            self.audio_encoder.wav2vec2.eval()
+        if freeze_text_bert:
+            self.text_encoder.bert.eval()
+
+        # Safety: verify freeze flags
+        if not freeze_audio_w2v:
+            print("\n*** WARNING: Unfreezing wav2vec2 (~320M params) ***")
+        if not freeze_text_bert:
+            print("\n*** WARNING: Unfreezing BERT (~110M params) ***")
 
 
 # LABEL NORMALIZATION (in training script):
