@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ⚠️ DEPRECATED — DO NOT USE for new experiments
+# This script was used in Phase A v4 (RAVDESS + data augmentation).
+# v4 achieved only 48.1% val accuracy vs v1's 67.1%. Data augmentation
+# route has been abandoned. Use phaseA_pretrain.py for Phase A training.
+# Kept for archival reference only.
+
 """
 Phase A v4: RAVDESS-Only Audio Emotion Pretraining WITH Data Augmentation
 --------------------------------------------------------------------------

@@ -161,19 +161,31 @@ Fused_Trust_Score, Binary_Label
 
 ```
 EMMA-BC/
-├── phaseA_pretrain.py              # Audio encoder pretraining
+├── phaseA_pretrain.py              # Audio encoder pretraining (wav2vec2, unfrozen)
+├── phaseA_e2v.py                   # [Experimental] emotion2vec+ large variant (FunASR)
+├── phaseA_augment.py               # [Deprecated] Data augmentation variant (v4)
 ├── phaseB/
 │   ├── multimodal_model.py         # wav2vec2 + BERT fusion architecture
 │   ├── multimodal_dataset.py       # DAICWOZDataset + MODMADataset
-│   └── phaseB_train.py             # Multi-task clinical regression
+│   └── phaseB_train.py             # Multi-task clinical regression (PHQ-8)
 ├── analysis/
 │   ├── interpret.py                # Interpretability & fairness
 │   ├── clinical_eval.py            # Classification + uncertainty + predict_csv
 │   └── table_generator.py          # Paper table generation
+├── src/                            # Reusable library modules (data, models, preprocessing)
+│   ├── data/
+│   │   ├── datasets/               # Dataset loaders (DAIC-WOZ)
+│   │   ├── preprocessing/          # Audio/video preprocessing
+│   │   └── scripts/                # Dataset download utilities
+│   ├── models/
+│   │   ├── emotion/                # Emotion encoder (text_encoder)
+│   │   └── mult/                   # MulT fusion model
+│   └── training/                   # Training loop utilities
 ├── configs/scales/                 # Clinical scale schemas (HADS, VAS, CFS, etc.)
 ├── docs/                           # Documentation (Chinese)
 ├── requirements.txt
 ├── DATA_COMPLIANCE.md              # Dataset license compliance
+├── LICENSE                         # MIT License
 └── README.md
 ```
 
