@@ -163,6 +163,7 @@ Fused_Trust_Score, Binary_Label
 EMMA-BC/
 ├── phaseA_pretrain.py              # Audio encoder pretraining (wav2vec2, unfrozen)
 ├── phaseA_e2v.py                   # [Experimental] emotion2vec+ large variant (FunASR)
+├── test_e2v_model.py               # [Experimental] emotion2vec+ model compatibility test
 ├── phaseA_augment.py               # [Deprecated] Data augmentation variant (v4)
 ├── phaseB/
 │   ├── multimodal_model.py         # wav2vec2 + BERT fusion architecture
