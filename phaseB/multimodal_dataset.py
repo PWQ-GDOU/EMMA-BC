@@ -52,9 +52,9 @@ class DAICWOZDataset(Dataset):
         self.data_dir = Path(data_dir)
         self.sample_rate = sample_rate
         self.max_samples = int(max_audio_sec * sample_rate)
-        self.min_samples = int(getattr(self, 'min_audio_sec', 1.0) * sample_rate) if hasattr(self, 'min_audio_sec') else 16000
-        self.min_samples = int(min_audio_sec * sample_rate)
-        self.filter_interviewer = filter_interviewer  # Wav2Vec2 needs >= 6400 samples
+        self.min_samples = 16000
+        # removed — see above
+        self.filter_interviewer = False  # Wav2Vec2 needs >= 6400 samples
         self.split = split
 
         # Load PHQ-8 labels
@@ -206,9 +206,9 @@ class MODMADataset(Dataset):
         self.data_dir = Path(data_dir)
         self.sample_rate = sample_rate
         self.max_samples = int(max_audio_sec * sample_rate)
-        self.min_samples = int(getattr(self, 'min_audio_sec', 1.0) * sample_rate) if hasattr(self, 'min_audio_sec') else 16000
-        self.min_samples = int(min_audio_sec * sample_rate)
-        self.filter_interviewer = filter_interviewer  # Wav2Vec2 needs >= 6400 samples
+        self.min_samples = 16000
+        # removed — see above
+        self.filter_interviewer = False  # Wav2Vec2 needs >= 6400 samples
 
         # Load clinical labels
         self.labels_df = pd.read_excel(xlsx_path)
@@ -218,6 +218,7 @@ class MODMADataset(Dataset):
             "PHQ-9", "CTQ-SF", "LES", "SSRS", "GAD-7", "PSQI", "_a", "_b"
         ]
         self.labels_df.set_index("subject_id", inplace=True)
+        self.labels_df.index = ["0" + str(sid) for sid in self.labels_df.index]
 
         # Find all available subjects
         audio_dir = self.data_dir / "audio_lanzhou_2015"
@@ -449,3 +450,45 @@ if __name__ == "__main__":
             print(f"  Diagnosis: {sample['diagnosis']}")
     else:
         print("\n--- MODMA: need to extract audio zip first ---")
+
+
+class CombinedMultimodalDataset(Dataset):
+    def __init__(self, daic_ds, modma_ds):
+        self.daic = daic_ds; self.modma = modma_ds
+        self.daic_len = len(daic_ds); self.modma_len = len(modma_ds)
+        self.total = self.daic_len + self.modma_len
+        print(f"[Combined] DAIC={self.daic_len} + MODMA={self.modma_len} = {self.total}")
+    def __len__(self): return self.total
+    def __getitem__(self, idx):
+        if idx < self.daic_len:
+            item = self.daic[idx]
+            return {"audio":item["audio"],"texts":item["transcript"],"phq":item["phq_total"],"has_text":True,"source":"daic","pid":item["pid"]}
+        else:
+            item = self.modma[idx - self.daic_len]
+            return {"audio":item["audio"],"texts":"","phq":item["phq"],"has_text":False,"source":"modma","pid":item["subject_id"]}
+    def split_by_subject(self, val_ratio=0.15, seed=42):
+        import random; rng = random.Random(seed)
+        dp = list(set(s["pid"] for s in self.daic.samples)); rng.shuffle(dp)
+        nv = max(1,int(len(dp)*val_ratio)); vp = set(dp[:nv])
+        dt=[i for i,s in enumerate(self.daic.samples) if s["pid"] not in vp]
+        dv=[i for i,s in enumerate(self.daic.samples) if s["pid"] in vp]
+        sp = list(set(s["subject_id"] for s in self.modma.samples)); rng.shuffle(sp)
+        nm = max(1,int(len(sp)*val_ratio)); vm = set(sp[:nm])
+        mt=[i+self.daic_len for i,s in enumerate(self.modma.samples) if s["subject_id"] not in vm]
+        mv=[i+self.daic_len for i,s in enumerate(self.modma.samples) if s["subject_id"] in vm]
+        print(f"[Combined Split] train={len(dt)+len(mt)} (D:{len(dt)}+M:{len(mt)}), val={len(dv)+len(mv)} (D:{len(dv)}+M:{len(mv)})")
+        from torch.utils.data import Subset; return Subset(self, dt+mt), Subset(self, dv+mv)
+
+def collate_combined(batch):
+    max_len = max(item["audio"].shape[0] for item in batch)
+    al, ml, tx, pl, ht = [], [], [], [], []
+    for item in batch:
+        a = item["audio"]; L = a.shape[0]
+        if L < max_len:
+            a = torch.cat([a, torch.zeros(max_len - L)])
+            m = torch.cat([torch.ones(L), torch.zeros(max_len - L)])
+        else:
+            a = a[:max_len]; m = torch.ones(max_len)
+        al.append(a); ml.append(m)
+        tx.append(item["texts"]); pl.append(item["phq"]); ht.append(item["has_text"])
+    return {"audio":torch.stack(al),"attention_mask":torch.stack(ml),"texts":tx,"phq_total":torch.stack(pl),"has_text":torch.tensor(ht,dtype=torch.bool)}

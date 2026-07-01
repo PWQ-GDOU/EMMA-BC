@@ -1,0 +1,150 @@
+EMMA-BC Route A Complete Experiment
+Started: 2026-07-01T12:58:49.214032
+Output: /data/disk1/CancerEmotionSystem/reproduce/routeA_final
+
+======================================================================
+LOADING FEATURES
+======================================================================
+  Audio (wav2vec2): 1635 -> 1634 (removed 1 zero-var cols)
+
+  N=82, Dep(>=10)=34/82 (41.5%)
+  Class imbalance: 1.41:1
+  Audio dim: 1634
+  Text dim:  768
+  Video dim: 386
+
+======================================================================
+EXPERIMENT: A (wav2vec2) (1634 dims)
+======================================================================
+
+[Step 1] Mutual Information feature selection
+
+[Step 2] Ensemble (LR + SVC + GB) with 5-fold CV
+  Default(0.5): Acc=0.7559±0.055, F1=0.6899±0.092, AUC=0.8124±0.069
+
+[Step 3] Threshold optimization
+  Optimal threshold: 0.550
+  Acc=0.7927, F1=0.7213
+  Sens=0.6471, Spec=0.8958
+  PPV=0.8148, NPV=0.7818
+  TP=22, FP=5, TN=43, FN=12
+
+[Step 4] ROC analysis
+  AUC = 0.8162
+  ROC-optimal: FPR=0.2708, TPR=0.7647, thresh=0.409
+
+[Step 5] Feature importance
+  Top-5 MI scores: ['0.2419', '0.2293', '0.2193', '0.2105', '0.2102']
+
+[Step 6] Training final model on full dataset
+  Saved: /data/disk1/CancerEmotionSystem/reproduce/routeA_final/model_A_wav2vec2.pkl
+
+[Step 7] PHQ-8 regression (Ridge)
+  FAILED: 'RidgeCV' object has no attribute 'alpha_'
+
+======================================================================
+EXPERIMENT: A+T (2402 dims)
+======================================================================
+
+[Step 1] Mutual Information feature selection
+
+[Step 2] Ensemble (LR + SVC + GB) with 5-fold CV
+  Default(0.5): Acc=0.6926±0.100, F1=0.5900±0.125, AUC=0.7181±0.076
+
+[Step 3] Threshold optimization
+  Optimal threshold: 0.425
+  Acc=0.7073, F1=0.6471
+  Sens=0.6471, Spec=0.7500
+  PPV=0.6471, NPV=0.7500
+  TP=22, FP=12, TN=36, FN=12
+
+[Step 4] ROC analysis
+  AUC = 0.7194
+  ROC-optimal: FPR=0.2500, TPR=0.6471, thresh=0.429
+
+[Step 5] Feature importance
+  Top-5 MI scores: ['0.2419', '0.2293', '0.2193', '0.2105', '0.2102']
+
+[Step 6] Training final model on full dataset
+  Saved: /data/disk1/CancerEmotionSystem/reproduce/routeA_final/model_A+T.pkl
+
+[Step 7] PHQ-8 regression (Ridge)
+  FAILED: 'RidgeCV' object has no attribute 'alpha_'
+
+======================================================================
+EXPERIMENT: A+V (2020 dims)
+======================================================================
+
+[Step 1] Mutual Information feature selection
+
+[Step 2] Ensemble (LR + SVC + GB) with 5-fold CV
+  Default(0.5): Acc=0.6824±0.089, F1=0.5554±0.193, AUC=0.7340±0.102
+
+[Step 3] Threshold optimization
+  Optimal threshold: 0.275
+  Acc=0.7073, F1=0.7273
+  Sens=0.9412, Spec=0.5417
+  PPV=0.5926, NPV=0.9286
+  TP=32, FP=22, TN=26, FN=2
+
+[Step 4] ROC analysis
+  AUC = 0.7684
+  ROC-optimal: FPR=0.3333, TPR=0.8235, thresh=0.372
+
+[Step 5] Feature importance
+  Top-5 MI scores: ['0.2419', '0.2293', '0.2193', '0.2105', '0.2102']
+
+[Step 6] Training final model on full dataset
+  Saved: /data/disk1/CancerEmotionSystem/reproduce/routeA_final/model_A+V.pkl
+
+[Step 7] PHQ-8 regression (Ridge)
+  FAILED: 'RidgeCV' object has no attribute 'alpha_'
+
+======================================================================
+EXPERIMENT: A+T+V (2788 dims)
+======================================================================
+
+[Step 1] Mutual Information feature selection
+
+[Step 2] Ensemble (LR + SVC + GB) with 5-fold CV
+  Default(0.5): Acc=0.6566±0.115, F1=0.5178±0.194, AUC=0.6965±0.130
+
+[Step 3] Threshold optimization
+  Optimal threshold: 0.250
+  Acc=0.6098, F1=0.6279
+  Sens=0.7941, Spec=0.4792
+  PPV=0.5192, NPV=0.7667
+  TP=27, FP=25, TN=23, FN=7
+
+[Step 4] ROC analysis
+  AUC = 0.6795
+  ROC-optimal: FPR=0.2708, TPR=0.5882, thresh=0.439
+
+[Step 5] Feature importance
+  Top-5 MI scores: ['0.2419', '0.2293', '0.2193', '0.2105', '0.2102']
+
+[Step 6] Training final model on full dataset
+  Saved: /data/disk1/CancerEmotionSystem/reproduce/routeA_final/model_A+T+V.pkl
+
+[Step 7] PHQ-8 regression (Ridge)
+  FAILED: 'RidgeCV' object has no attribute 'alpha_'
+
+
+================================================================================
+FINAL COMPLETE EXPERIMENT SUMMARY
+================================================================================
+
+Modality                  Acc       F1      AUC     Sens     Spec      PPV      NPV    Thr
+-------------------------------------------------------------------------------------
+A (wav2vec2)           0.7927   0.7213   0.8162   0.6471   0.8958   0.8148   0.7818  0.550
+A+T                    0.7073   0.6471   0.7194   0.6471   0.7500   0.6471   0.7500  0.425
+A+V                    0.7073   0.7273   0.7684   0.9412   0.5417   0.5926   0.9286  0.275
+A+T+V                  0.6098   0.6279   0.6795   0.7941   0.4792   0.5192   0.7667  0.250
+
+Modality                  MAE       R²  Pearson r    alpha MAE/Baseline
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/user/routeA_full_experiment.py", line 372, in <module>
+    print(f"{name:<20} {r['mae']:8.3f} {r['r2']:8.4f} {r['pearson_r']:10.4f} "
+                        ~^^^^^^^
+KeyError: 'mae'

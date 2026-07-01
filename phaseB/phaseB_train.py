@@ -36,8 +36,10 @@ from multimodal_model import (
 from multimodal_dataset import (
     DAICWOZDataset,
     MODMADataset,
+    CombinedMultimodalDataset,
     collate_daic,
     collate_modma,
+    collate_combined,
 )
 
 
@@ -104,7 +106,8 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
         labels_norm = normalizer.normalize(labels.unsqueeze(-1)).squeeze(-1)
         
         optimizer.zero_grad()
-        outputs = model(audio, texts, attention_mask=attention_mask)
+        ht = batch.get("has_text", None); ht = ht.to(device) if ht is not None else None
+        outputs = model(audio, texts, attention_mask=attention_mask, has_text=ht)
         pred = outputs["phq"].squeeze(-1)  # [B]
         
         loss = nn.functional.mse_loss(pred, labels_norm)
@@ -139,7 +142,8 @@ def val_epoch(model, loader, normalizer, device):
         labels = batch["phq_total"].to(device)
         
         labels_norm = normalizer.normalize(labels.unsqueeze(-1)).squeeze(-1)
-        outputs = model(audio, texts, attention_mask=attention_mask)
+        ht = batch.get("has_text", None); ht = ht.to(device) if ht is not None else None
+        outputs = model(audio, texts, attention_mask=attention_mask, has_text=ht)
         preds_norm = outputs["phq"].squeeze(-1)
         
         loss = nn.functional.mse_loss(preds_norm, labels_norm)
@@ -183,13 +187,16 @@ def val_epoch(model, loader, normalizer, device):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str, default="/data/disk1/datasets/diac_woz")
+    parser.add_argument("--modma_data", type=str, default="/data/disk1/datasets/modma/extracted")
+    parser.add_argument("--modma_xlsx", type=str, default="/data/disk1/datasets/modma/extracted/audio_lanzhou_2015/subjects_information_audio_lanzhou_2015.xlsx")
+    parser.add_argument("--use_modma", action="store_true", default=True)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--lr", type=float, default=5e-4, help="Higher LR for small trainable head")
     parser.add_argument("--d_model", type=int, default=256)
     parser.add_argument("--checkpoint_dir", type=str, default="checkpoints/phaseB")
     parser.add_argument("--audio_pretrained", type=str, default="checkpoints/phaseA/phaseA_best.pt")
-    parser.add_argument("--num_workers", type=int, default=2,
+    parser.add_argument("--num_workers", type=int, default=0,
                         help="min(4, CPU/2). Higher causes torchaudio I/O contention")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--resume", type=str, default=None)
@@ -207,22 +214,20 @@ def main():
     
     # ── 1. Data ──
     print("\n═══ Loading Data ═══")
-    full_ds = DAICWOZDataset(args.data, split="train")
-    
-    # Per-participant split (no leakage!)
-    train_ds, val_ds = full_ds.split_val_from_train(
-        val_ratio=args.val_split, seed=args.seed
-    )
-    
+    daic_ds = DAICWOZDataset(args.data, split="train")
+    modma_ds = MODMADataset(args.modma_data, args.modma_xlsx, max_audio_sec=120)
+    full_ds = CombinedMultimodalDataset(daic_ds, modma_ds)
+    train_ds, val_ds = full_ds.split_by_subject(val_ratio=args.val_split, seed=args.seed)
+    _coll = collate_combined
     gen = torch.Generator().manual_seed(args.seed)
     train_loader = DataLoader(
         train_ds, batch_size=args.batch_size, shuffle=True,
-        collate_fn=collate_daic, num_workers=args.num_workers,
+        collate_fn=_coll, num_workers=args.num_workers,
         pin_memory=True, generator=gen, drop_last=True,
     )
     val_loader = DataLoader(
         val_ds, batch_size=args.batch_size, shuffle=False,
-        collate_fn=collate_daic, num_workers=min(2, args.num_workers),
+        collate_fn=_coll, num_workers=min(2, args.num_workers),
         pin_memory=True,
     )
     print(f"Train: {len(train_ds)}, Val: {len(val_ds)}")
@@ -310,12 +315,12 @@ def main():
     gen = torch.Generator().manual_seed(args.seed + start_epoch)
     train_loader = DataLoader(
         train_ds, batch_size=args.batch_size, shuffle=True,
-        collate_fn=collate_daic, num_workers=args.num_workers,
+        collate_fn=_coll, num_workers=args.num_workers,
         pin_memory=True, generator=gen, drop_last=True,
     )
     val_loader = DataLoader(
         val_ds, batch_size=args.batch_size, shuffle=False,
-        collate_fn=collate_daic, num_workers=min(2, args.num_workers),
+        collate_fn=_coll, num_workers=min(2, args.num_workers),
         pin_memory=True,
     )
     print(f"Train: {len(train_ds)}, Val: {len(val_ds)}")
@@ -387,7 +392,7 @@ def main():
     
     # Save history
     with open(os.path.join(args.checkpoint_dir, "history.json"), "w") as f:
-        json.dump(history, f, indent=2)
+        clean = [{k: float(v.item()) if hasattr(v,"item") else v for k,v in e.items()} for e in history]; json.dump(clean, f, indent=2)
     
     print(f"\n\u2705 Phase B complete! Best MAE: {best_mae:.3f}, CCC: {best_ccc:.4f}")
     print(f"   Checkpoint: {args.checkpoint_dir}/phaseB_best.pt")

@@ -26,6 +26,95 @@ set_seed(42)
 # 1. Binary classification metrics (PHQ-8 >= 10)
 # ═══════════════════════════════════════════════════
 
+
+# ============================================================
+# P0: Clinical Readiness Metrics (NMPA 2025 Guidelines)
+# ============================================================
+
+try:
+    from sklearn.metrics import roc_auc_score, average_precision_score
+    from sklearn.metrics import cohen_kappa_score, confusion_matrix
+    _SK = True
+except ImportError:
+    _SK = False
+
+
+def comprehensive_metrics(preds, labels, pred_probs=None, thresh=10.0):
+    """AUC-ROC, AUC-PR, F1, PPV, NPV, Cohen's kappa."""
+    p = np.asarray(preds).ravel()
+    l = np.asarray(labels).ravel()
+    pb = (p >= thresh).astype(int)
+    lb = (l >= thresh).astype(int)
+    tn, fp, fn, tp = confusion_matrix(lb, pb, labels=[0, 1]).ravel()
+    m = {"tp": int(tp), "fp": int(fp), "fn": int(fn), "tn": int(tn),
+         "sens": tp / (tp + fn + 1e-8),
+         "spec": tn / (tn + fp + 1e-8),
+         "ppv": tp / (tp + fp + 1e-8),
+         "npv": tn / (tn + fn + 1e-8)}
+    m["f1"] = 2 * m["ppv"] * m["sens"] / (m["ppv"] + m["sens"] + 1e-8)
+    if _SK and len(np.unique(lb)) >= 2:
+        m["cohen_kappa"] = cohen_kappa_score(lb, pb)
+        if pred_probs is None:
+            pred_probs = 1.0 / (1.0 + np.exp(-(p - thresh) / 3.0))
+        try:
+            m["auc_roc"] = roc_auc_score(lb, pred_probs)
+            m["auc_pr"] = average_precision_score(lb, pred_probs)
+        except Exception:
+            pass
+    return m
+
+
+def calibration_analysis(preds, labels, n_bins=10):
+    """ECE + Brier score."""
+    p = np.asarray(preds).ravel()
+    l = np.asarray(labels).ravel()
+    rp = max(p.max() - p.min(), 1e-8)
+    rl = max(l.max() - l.min(), 1e-8)
+    pn = (p - p.min()) / rp
+    ln = (l - l.min()) / rl
+    brier = float(np.mean((pn - ln) ** 2))
+    bins = np.linspace(0, 1, n_bins + 1)
+    ece = 0.0
+    for i in range(n_bins):
+        mask = (pn >= bins[i]) & (pn < bins[i + 1])
+        if mask.sum() > 0:
+            ece += (mask.sum() / len(p)) * abs(pn[mask].mean() - ln[mask].mean())
+    return {"ece": float(ece), "brier": float(brier)}
+
+
+def print_report(metrics, calib=None, title="Clinical Evaluation"):
+    """Formatted P0 metrics output."""
+    s = "=" * 55
+    print()
+    print(s)
+    print("  " + title)
+    print(s)
+    print("  TP=%d  FP=%d  FN=%d  TN=%d" % (
+        metrics.get("tp", 0), metrics.get("fp", 0),
+        metrics.get("fn", 0), metrics.get("tn", 0)))
+    print("  Sens=%.4f  Spec=%.4f  PPV=%.4f  NPV=%.4f  F1=%.4f" % (
+        metrics.get("sens", 0), metrics.get("spec", 0),
+        metrics.get("ppv", 0), metrics.get("npv", 0), metrics.get("f1", 0)))
+    if "auc_roc" in metrics:
+        print("  AUC-ROC=%.4f  AUC-PR=%.4f  Kappa=%.4f" % (
+            metrics["auc_roc"], metrics["auc_pr"], metrics["cohen_kappa"]))
+    if calib:
+        print("  ECE=%.4f  Brier=%.4f" % (calib["ece"], calib["brier"]))
+    print("  -- Clinical Readiness --")
+    checks = [
+        ("AUC-ROC >= 0.85", metrics.get("auc_roc", 0) or 0, 0.85),
+        ("Sens >= 0.85", metrics["sens"], 0.85),
+        ("Spec >= 0.80", metrics["spec"], 0.80),
+        ("F1 >= 0.80", metrics["f1"], 0.80),
+    ]
+    ok = 0
+    for name, val, target in checks:
+        chk = val >= target
+        ok += chk
+        print("  [%s] %s: %.3f (target %.2f)" % ("V" if chk else "X", name, val, target))
+    print("  %d/%d checks passed" % (ok, len(checks)))
+    print(s)
+
 PHQ_CLINICAL_THRESHOLD = 10.0  # Moderate depression cutoff
 
 def classification_metrics(preds, labels):
@@ -81,15 +170,6 @@ def detect_empty_text(text):
     return text is None or len(text.strip()) < 10
 
 
-@torch.no_grad()
-    """
-    Missing-modality fallback prediction.
-    
-    WARNING: Audio-only and text-only branches were NOT trained on
-    single-modality data. Fallback predictions may be unreliable.
-    For paper evaluation, only use complete dual-modality samples.
-    Single-modality fallback is a demo placeholder for future work.
-    """
 def predict_with_fallback(model, audio, transcript, attention_mask, device, 
                            confidence_threshold=0.5):
     """
@@ -415,7 +495,7 @@ def predict_to_csv(model, loader, normalizer, device, output_path,
     # Fused = Confidence * exp(-MC_Std/3.0). Std=3 halves trust.
     if use_mc_dropout:
         for row in rows:
-            row[8] = round(row[2] * np.exp(-row[5] / 3.0)  # 3.0 ≈ typical PHQ-8 SD in DAIC-WOZ (half-trust at 1 sigma), 2)
+            row[8] = round(row[2] * np.exp(-row[5] / 3.0), 2)  # exponential-decay fused trust
     header = ["Subject_ID","PHQ_Score","Confidence","Modality_Status",
               "MC_Mean","MC_Std","CI_Lower_95","CI_Upper_95","Fused_Trust_Score","Binary_Label"]
     with open(output_path, "w", newline="") as f:

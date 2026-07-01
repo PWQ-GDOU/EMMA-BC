@@ -1,0 +1,97 @@
+Subjects: 82, PHQ-8 range [0, 23], dep(>=10)=34/82
+
+[1/3] Extracting text features (BERT)...
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 3847.67it/s]
+[transformers] [1mBertModel LOAD REPORT[0m from: bert-base-uncased
+Key                                        | Status     |  | 
+-------------------------------------------+------------+--+-
+cls.seq_relationship.weight                | UNEXPECTED |  | 
+cls.predictions.transform.dense.weight     | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED |  | 
+cls.seq_relationship.bias                  | UNEXPECTED |  | 
+cls.predictions.bias                       | UNEXPECTED |  | 
+cls.predictions.transform.dense.bias       | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  Text: 20/82
+  Text: 40/82
+  Text: 60/82
+  Text: 80/82
+  Text features: (82, 768)
+
+[2/3] Extracting video features (OpenFace)...
+  Video: 20/82
+  Video: 40/82
+  Video: 60/82
+  Video: 80/82
+  Video features: (82, 220) (nonzero columns: 220/245)
+
+[3/3] Loading audio features (wav2vec2)...
+  Audio features: (82, 1536)
+
+============================================================
+TRI-MODAL EVALUATION
+============================================================
+
+Modality                 Acc      F1    Prec     Rec     AUC
+------------------------------------------------------------
+A (Audio)             0.6471  0.5333  0.6339  0.4952  0.7289 ★
+T (Text)              0.5750  0.4423  0.4771  0.4333  0.5990
+V (Video)             0.4978  0.3629  0.4838  0.3286  0.4827
+A+T                   0.6096  0.4868  0.5359  0.4905  0.6889
+A+V                   0.6463  0.5237  0.6250  0.4952  0.7359
+T+V                   0.5985  0.4155  0.4390  0.4000  0.5737
+A+T+V (Tri-Modal)     0.6463  0.5241  0.5783  0.5190  0.6757
+
+Best: A (Audio) (Acc=0.6471)
+
+============================================================
+GNN FEW-SHOT CLASSIFIER (Xia et al. 2024)
+============================================================
+
+Training Tri-Modal GNN...
+  Fold 1 Epoch 0: train_loss=0.7043, val_acc=0.4118
+  Fold 1 Epoch 50: train_loss=0.0005, val_acc=0.5882
+  Fold 1 Epoch 100: train_loss=0.0001, val_acc=0.5882
+  Fold 1 Epoch 150: train_loss=0.0001, val_acc=0.5882
+  Fold 1 final: val_acc=0.7647, f1=0.5333
+  Fold 2 Epoch 0: train_loss=0.6884, val_acc=0.5882
+  Fold 2 Epoch 50: train_loss=0.0000, val_acc=0.7647
+  Fold 2 Epoch 100: train_loss=0.0000, val_acc=0.7059
+  Fold 2 Epoch 150: train_loss=0.0033, val_acc=0.7059
+  Fold 2 final: val_acc=0.8235, f1=0.6667
+  Fold 3 Epoch 0: train_loss=0.6944, val_acc=0.6250
+  Fold 3 Epoch 50: train_loss=0.0000, val_acc=0.5625
+  Fold 3 Epoch 100: train_loss=0.0001, val_acc=0.6250
+  Fold 3 Epoch 150: train_loss=0.0003, val_acc=0.5625
+  Fold 3 final: val_acc=0.7500, f1=0.0000
+  Fold 4 Epoch 0: train_loss=0.6885, val_acc=0.5625
+  Fold 4 Epoch 50: train_loss=0.0530, val_acc=0.5625
+  Fold 4 Epoch 100: train_loss=0.0001, val_acc=0.6250
+  Fold 4 Epoch 150: train_loss=0.0002, val_acc=0.5000
+  Fold 4 final: val_acc=0.6875, f1=0.4286
+  Fold 5 Epoch 0: train_loss=0.6926, val_acc=0.5625
+  Fold 5 Epoch 50: train_loss=0.0008, val_acc=0.6250
+  Fold 5 Epoch 100: train_loss=0.0001, val_acc=0.6250
+  Fold 5 Epoch 150: train_loss=0.0004, val_acc=0.5625
+  Fold 5 final: val_acc=0.6875, f1=0.7059
+
+GNN 5-fold: Acc=0.7426±0.0513, F1=0.4669±0.2533
+
+============================================================
+FINAL SUMMARY
+============================================================
+Method                        Acc      F1     AUC
+--------------------------------------------------
+A (Audio)                  0.6471  0.5333  0.7289
+T (Text)                   0.5750  0.4423  0.5990
+V (Video)                  0.4978  0.3629  0.4827
+A+T                        0.6096  0.4868  0.6889
+A+V                        0.6463  0.5237  0.7359
+T+V                        0.5985  0.4155  0.5737
+A+T+V (Tri-Modal)          0.6463  0.5241  0.6757
+Tri-Modal GNN              0.7426  0.4669       -
+
+Done.

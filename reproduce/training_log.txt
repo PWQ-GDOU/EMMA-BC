@@ -1,0 +1,235 @@
+============================================================
+BiLSTM-GNN Depression Detection - Xia et al. 2024 Reproduction
+Device: cuda:0
+Data: /data/disk1/datasets/diac_woz
+============================================================
+
+--- Loading Train+Dev subjects ---
+  Loading 302... OK (audio:30000f, video:9000f, PHQ8=4)
+  Loading 303... OK (audio:30000f, video:9000f, PHQ8=0)
+  Loading 304... OK (audio:30000f, video:9000f, PHQ8=6)
+  Loading 305... OK (audio:30000f, video:9000f, PHQ8=7)
+  Loading 307... OK (audio:30000f, video:9000f, PHQ8=4)
+  Loading 308... OK (audio:30000f, video:9000f, PHQ8=22)
+  Loading 309... OK (audio:30000f, video:9000f, PHQ8=15)
+  Loading 310... OK (audio:30000f, video:9000f, PHQ8=4)
+  Loading 311... OK (audio:30000f, video:9000f, PHQ8=21)
+  Loading 312... OK (audio:30000f, video:9000f, PHQ8=2)
+  Loading 313... OK (audio:30000f, video:9000f, PHQ8=7)
+  Loading 314... OK (audio:30000f, video:9000f, PHQ8=1)
+  Loading 315... OK (audio:30000f, video:9000f, PHQ8=2)
+  Loading 316... OK (audio:30000f, video:9000f, PHQ8=6)
+  Loading 318... OK (audio:30000f, video:9000f, PHQ8=3)
+  Loading 319... OK (audio:30000f, video:9000f, PHQ8=13)
+  Loading 322... OK (audio:30000f, video:9000f, PHQ8=5)
+  Loading 323... OK (audio:30000f, video:9000f, PHQ8=1)
+  Loading 324... OK (audio:30000f, video:9000f, PHQ8=5)
+  Loading 325... OK (audio:30000f, video:9000f, PHQ8=10)
+  Loading 326... OK (audio:30000f, video:9000f, PHQ8=2)
+  Loading 327... OK (audio:30000f, video:9000f, PHQ8=4)
+  Loading 328... OK (audio:30000f, video:9000f, PHQ8=4)
+  Loading 329... OK (audio:30000f, video:9000f, PHQ8=1)
+  Loading 330... OK (audio:30000f, video:9000f, PHQ8=12)
+  Loading 332... OK (audio:30000f, video:9000f, PHQ8=18)
+  Loading 333... OK (audio:30000f, video:9000f, PHQ8=5)
+  Loading 335... OK (audio:30000f, video:9000f, PHQ8=12)
+  Loading 337... OK (audio:30000f, video:9000f, PHQ8=10)
+  Loading 338... OK (audio:30000f, video:9000f, PHQ8=15)
+  Loading 339... OK (audio:30000f, video:9000f, PHQ8=11)
+  Loading 340... OK (audio:30000f, video:9000f, PHQ8=1)
+  Loading 341... OK (audio:30000f, video:9000f, PHQ8=7)
+  Loading 345... OK (audio:30000f, video:9000f, PHQ8=15)
+  Loading 346... OK (audio:30000f, video:9000f, PHQ8=23)
+  Loading 348... OK (audio:30000f, video:9000f, PHQ8=20)
+  Loading 349... OK (audio:30000f, video:9000f, PHQ8=5)
+  Loading 351... OK (audio:30000f, video:9000f, PHQ8=14)
+  Loading 352... OK (audio:30000f, video:9000f, PHQ8=10)
+  Loading 353... OK (audio:30000f, video:9000f, PHQ8=11)
+  Loading 354... OK (audio:30000f, video:9000f, PHQ8=18)
+  Loading 355... OK (audio:30000f, video:9000f, PHQ8=10)
+  Loading 356... OK (audio:30000f, video:9000f, PHQ8=10)
+  Loading 357... OK (audio:30000f, video:9000f, PHQ8=7)
+  Loading 358... OK (audio:30000f, video:9000f, PHQ8=7)
+  Loading 359... OK (audio:30000f, video:9000f, PHQ8=13)
+  Loading 360... OK (audio:30000f, video:9000f, PHQ8=4)
+  Loading 361... OK (audio:30000f, video:9000f, PHQ8=0)
+  Loading 362... OK (audio:30000f, video:9000f, PHQ8=20)
+  Loading 363... OK (audio:30000f, video:9000f, PHQ8=0)
+  Loading 364... OK (audio:30000f, video:9000f, PHQ8=0)
+  Loading 366... OK (audio:30000f, video:9000f, PHQ8=0)
+  Loading 367... OK (audio:30000f, video:9000f, PHQ8=19)
+  Loading 368... OK (audio:30000f, video:9000f, PHQ8=7)
+  Loading 369... OK (audio:30000f, video:9000f, PHQ8=0)
+  Loading 370... OK (audio:30000f, video:9000f, PHQ8=0)
+  Loading 372... OK (audio:30000f, video:9000f, PHQ8=13)
+  Loading 375... OK (audio:30000f, video:9000f, PHQ8=5)
+  Loading 376... OK (audio:30000f, video:9000f, PHQ8=12)
+  Loading 377... OK (audio:30000f, video:9000f, PHQ8=16)
+  Loading 378... OK (audio:30000f, video:9000f, PHQ8=1)
+  Loading 379... OK (audio:30000f, video:9000f, PHQ8=2)
+  Loading 380... OK (audio:30000f, video:9000f, PHQ8=10)
+  SKIP 383: no data directory
+  SKIP 384: no data directory
+  SKIP 385: no data directory
+  SKIP 386: no data directory
+  SKIP 387: no data directory
+  SKIP 389: no data directory
+  SKIP 390: no data directory
+  SKIP 391: no data directory
+  SKIP 392: no data directory
+  SKIP 395: no data directory
+  SKIP 396: no data directory
+  SKIP 397: no data directory
+  SKIP 399: no data directory
+  SKIP 400: no data directory
+  SKIP 403: no data directory
+  SKIP 404: no data directory
+  SKIP 405: no data directory
+  SKIP 406: no data directory
+  SKIP 407: no data directory
+  SKIP 409: no data directory
+  SKIP 410: no data directory
+  SKIP 411: no data directory
+  SKIP 413: no data directory
+  SKIP 414: no data directory
+  SKIP 416: no data directory
+  SKIP 417: no data directory
+  SKIP 418: no data directory
+  SKIP 419: no data directory
+  SKIP 420: no data directory
+  SKIP 421: no data directory
+  SKIP 422: no data directory
+  SKIP 424: no data directory
+  SKIP 426: no data directory
+  SKIP 427: no data directory
+  SKIP 428: no data directory
+  SKIP 429: no data directory
+  SKIP 430: no data directory
+  SKIP 432: no data directory
+  SKIP 434: no data directory
+  SKIP 436: no data directory
+  SKIP 438: no data directory
+  SKIP 439: no data directory
+  SKIP 440: no data directory
+  SKIP 443: no data directory
+  SKIP 444: no data directory
+  SKIP 445: no data directory
+  SKIP 446: no data directory
+  SKIP 447: no data directory
+  SKIP 449: no data directory
+  SKIP 450: no data directory
+  SKIP 452: no data directory
+  SKIP 453: no data directory
+  SKIP 456: no data directory
+  SKIP 457: no data directory
+  SKIP 458: no data directory
+  SKIP 459: no data directory
+  SKIP 461: no data directory
+  SKIP 462: no data directory
+  SKIP 463: no data directory
+  SKIP 464: no data directory
+  SKIP 466: no data directory
+  SKIP 467: no data directory
+  SKIP 469: no data directory
+  SKIP 470: no data directory
+  SKIP 471: no data directory
+  SKIP 472: no data directory
+  SKIP 474: no data directory
+  SKIP 476: no data directory
+  SKIP 477: no data directory
+  SKIP 478: no data directory
+  SKIP 481: no data directory
+  SKIP 482: no data directory
+  SKIP 483: no data directory
+  SKIP 485: no data directory
+  SKIP 487: no data directory
+  SKIP 488: no data directory
+  SKIP 489: no data directory
+  SKIP 490: no data directory
+  SKIP 491: no data directory
+  SKIP 492: no data directory
+  SKIP 601: no data directory
+  SKIP 603: no data directory
+  SKIP 608: no data directory
+  SKIP 612: no data directory
+  SKIP 628: no data directory
+  SKIP 633: no data directory
+  SKIP 641: no data directory
+  SKIP 654: no data directory
+  SKIP 660: no data directory
+  SKIP 662: no data directory
+  SKIP 673: no data directory
+  SKIP 677: no data directory
+  SKIP 680: no data directory
+  SKIP 684: no data directory
+  SKIP 692: no data directory
+  SKIP 695: no data directory
+  SKIP 697: no data directory
+  SKIP 702: no data directory
+  SKIP 703: no data directory
+  SKIP 707: no data directory
+  train: 63 subjects
+  Loading 300... OK (audio:30000f, video:9000f, PHQ8=2)
+  Loading 301... OK (audio:30000f, video:9000f, PHQ8=3)
+  Loading 306... OK (audio:30000f, video:9000f, PHQ8=0)
+  Loading 317... OK (audio:30000f, video:9000f, PHQ8=8)
+  Loading 320... OK (audio:30000f, video:9000f, PHQ8=11)
+  Loading 321... OK (audio:30000f, video:9000f, PHQ8=20)
+  Loading 331... OK (audio:30000f, video:9000f, PHQ8=8)
+  Loading 334... OK (audio:30000f, video:9000f, PHQ8=5)
+  Loading 336... OK (audio:30000f, video:9000f, PHQ8=7)
+  Loading 343... OK (audio:30000f, video:9000f, PHQ8=9)
+  Loading 344... OK (audio:30000f, video:9000f, PHQ8=11)
+  Loading 347... OK (audio:30000f, video:9000f, PHQ8=16)
+  Loading 350... OK (audio:30000f, video:9000f, PHQ8=11)
+  Loading 365... OK (audio:30000f, video:9000f, PHQ8=12)
+  Loading 371... OK (audio:30000f, video:9000f, PHQ8=9)
+  Loading 373... OK (audio:30000f, video:9000f, PHQ8=9)
+  Loading 374... OK (audio:30000f, video:9000f, PHQ8=2)
+  Loading 381... OK (audio:30000f, video:9000f, PHQ8=16)
+  Loading 382... OK (audio:30000f, video:9000f, PHQ8=0)
+  SKIP 388: no data directory
+  SKIP 393: no data directory
+  SKIP 401: no data directory
+  SKIP 402: no data directory
+  SKIP 408: no data directory
+  SKIP 412: no data directory
+  SKIP 415: no data directory
+  SKIP 423: no data directory
+  SKIP 425: no data directory
+  SKIP 431: no data directory
+  SKIP 433: no data directory
+  SKIP 435: no data directory
+  SKIP 437: no data directory
+  SKIP 441: no data directory
+  SKIP 442: no data directory
+  SKIP 448: no data directory
+  SKIP 451: no data directory
+  SKIP 454: no data directory
+  SKIP 455: no data directory
+  SKIP 465: no data directory
+  SKIP 468: no data directory
+  SKIP 473: no data directory
+  SKIP 475: no data directory
+  SKIP 479: no data directory
+  SKIP 480: no data directory
+  SKIP 484: no data directory
+  SKIP 486: no data directory
+  SKIP 617: no data directory
+  SKIP 627: no data directory
+  SKIP 632: no data directory
+  SKIP 653: no data directory
+  SKIP 657: no data directory
+  SKIP 667: no data directory
+  SKIP 670: no data directory
+  SKIP 687: no data directory
+  SKIP 698: no data directory
+  SKIP 713: no data directory
+  dev: 19 subjects
+
+Total: 82 subjects
+Train: 65 (30 depressed)
+Test:  17 (4 depressed)
+
+=== Training Fusion Network ===
+  Epoch 0: train_loss=110.6241, val_loss=120.0512

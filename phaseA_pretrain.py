@@ -272,6 +272,29 @@ class SinusoidalPositionalEncoding(nn.Module):
 # Training
 # ═══════════════════════════════════════════════════════
 
+
+# ============================================================
+# Focal Loss for imbalanced/hard emotion classes (sad=57%)
+# FL = -alpha * (1-p)^gamma * log(p)
+# gamma=2 focuses on hard examples; alpha boosts sad class
+# ============================================================
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha  # tensor of shape (num_classes,) or None
+        self.gamma = gamma
+        self.reduction = reduction
+    
+    def forward(self, logits, targets):
+        ce_loss = F.cross_entropy(logits, targets, reduction='none', weight=self.alpha)
+        pt = torch.exp(-ce_loss)
+        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        return focal_loss
+
 def train_epoch(model, loader, optimizer, criterion, device, epoch, total_epochs):
     model.train()
     losses, correct, total = 0, 0, 0
@@ -390,7 +413,11 @@ def main():
     # ── Optimizer ──
     optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
-    criterion = nn.CrossEntropyLoss()
+    # Focal Loss: gamma=2 focuses on hard samples; sad class x2 weight
+    # Class order: ['angry','disgust','fearful','happy','neutral','sad'] (alphabetical)
+    class_weights = torch.ones(6)
+    class_weights[2] = 2.5  # sad class (index 2, classes: [neutral,happy,sad,angry,fearful,disgust]): double weight (currently 57% -> target >70%)
+    criterion = FocalLoss(alpha=class_weights.to(device), gamma=2.0)
     
     # ── Training ──
     os.makedirs(args.checkpoint_dir, exist_ok=True)

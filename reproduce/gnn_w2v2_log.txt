@@ -1,0 +1,57 @@
+============================================================
+Loading features...
+Subjects: 82 (34 depressed, 48 non-depressed)
+Train: 65 (27D), Test: 17 (7D)
+
+=== Phase 1: MLP (1635 → 64) ===
+  Ep 10: tr_loss=0.3132, te_acc=0.5294, te_loss=0.8331
+  Ep 20: tr_loss=0.0448, te_acc=0.6471, te_loss=1.0705
+  Ep 30: tr_loss=0.0113, te_acc=0.6471, te_loss=1.2515
+  Ep 40: tr_loss=0.0284, te_acc=0.6471, te_loss=1.6480
+  Ep 50: tr_loss=0.0060, te_acc=0.5294, te_loss=1.5580
+  Ep 60: tr_loss=0.0120, te_acc=0.4118, te_loss=2.0527
+  Ep 70: tr_loss=0.0031, te_acc=0.6471, te_loss=1.5959
+  Ep 80: tr_loss=0.0017, te_acc=0.6471, te_loss=1.4839
+  Ep 90: tr_loss=0.0017, te_acc=0.4706, te_loss=1.9650
+  Ep 100: tr_loss=0.0009, te_acc=0.6471, te_loss=1.7744
+  Ep 110: tr_loss=0.0010, te_acc=0.6471, te_loss=1.7733
+  Ep 120: tr_loss=0.0029, te_acc=0.5882, te_loss=1.8085
+  Ep 130: tr_loss=0.0006, te_acc=0.5882, te_loss=1.8563
+  Ep 140: tr_loss=0.0002, te_acc=0.5294, te_loss=1.9002
+  Ep 150: tr_loss=0.0033, te_acc=0.5294, te_loss=2.0222
+  Ep 160: tr_loss=0.0079, te_acc=0.5294, te_loss=2.1463
+  Ep 170: tr_loss=0.0007, te_acc=0.5294, te_loss=2.1116
+  Ep 180: tr_loss=0.0018, te_acc=0.5294, te_loss=2.1261
+  Ep 190: tr_loss=0.0003, te_acc=0.5294, te_loss=2.0925
+  Ep 200: tr_loss=0.0019, te_acc=0.5294, te_loss=2.1239
+  Best MLP test acc: 0.6471
+
+=== Extracting embeddings ===
+
+=== Phase 2: GNN Few-Shot ===
+  GNN train: 55 (23D/32N)
+  GNN val:   10 (4D/6N)
+  Shot=3, Query=5
+  Ep 200: loss=0.6923, train_acc=0.300
+  Ep 400: loss=0.6903, train_acc=0.600
+  Ep 600: loss=0.6939, train_acc=0.300
+  Ep 800: loss=0.6932, train_acc=0.500
+  Ep 1000: loss=0.6910, train_acc=0.600
+  Ep 1200: loss=0.6995, train_acc=0.200
+  Ep 1400: loss=0.6818, train_acc=0.600
+  Ep 1600: loss=0.6832, train_acc=0.400
+  Ep 1800: loss=0.6842, train_acc=0.400
+  Ep 2000: loss=0.6595, train_acc=0.500
+
+=== Phase 3: Evaluation ===
+
+============================================================
+FINAL RESULTS
+============================================================
+  Train/Test: 65/17 (27D/7D)
+  MLP + LR:   Acc=0.5882, F1=0.3636
+  MLP + GNN:  Acc=0.5090
+  GNN val:    0.0000
+  Baseline (Ridge on raw pool): Acc=0.694
+
+  Saved to /data/disk1/CancerEmotionSystem/checkpoints/gnn_w2v2/model_best.pt

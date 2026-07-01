@@ -1,0 +1,89 @@
+Using 4 GPUs
+============================================================
+BiLSTM-GNN Depression Detection - Multi-GPU (4 GPUs)
+Xia et al. 2024 Reproduction
+============================================================
+
+--- Loading Data ---
+Loaded 82 subjects
+Depressed: 34, Non-depressed: 48
+Train: 65 (29 dep)
+Test:  17 (5 dep)
+
+=== Multi-GPU Fusion Training ===
+  Train: 55 | Val: 10
+
+Computing feature normalization stats...
+  Audio: torch.Size([23]) features, mean range [-167.76,2555.98]
+  Video: torch.Size([49]) features, mean range [-3873.43,6660.67]
+  Audio std zeros: 0
+  Video std zeros: 0
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/linear.py:134: UserWarning: Attempting to run cuBLAS, but there was no current CUDA context! Attempting to set the primary context... (Triggered internally at /pytorch/aten/src/ATen/cuda/CublasHandlePool.cpp:370.)
+  return F.linear(input, self.weight, self.bias)
+  [DEBUG] audio norm: range=[-39.54,46.40]
+  [DEBUG] emb: mean=0.0388, std=0.2729, nan=False
+  [DEBUG] pred: min=-0.2628, max=-0.1757, nan=False
+  [DEBUG] phq8: [0.0,23.0], loss=145.5862
+  Epoch   0: train=133.57, val=65.30
+  Epoch   1: train=134.39, val=65.02
+  Epoch   2: train=132.71, val=64.76
+  Epoch   3: train=137.29, val=64.50
+  Epoch   4: train=127.20, val=64.22
+  Epoch  15: train=113.97, val=60.10, best=60.10 @15
+  Epoch  30: train=101.78, val=46.20, best=46.20 @30
+  Epoch  45: train=51.99, val=30.67, best=30.67 @45
+  Epoch  60: train=46.56, val=45.05, best=30.59 @46
+  Epoch  75: train=46.81, val=39.70, best=30.59 @46
+  Epoch  90: train=33.19, val=49.41, best=30.59 @46
+  Epoch 105: train=25.13, val=67.35, best=30.59 @46
+  Epoch 120: train=24.06, val=76.32, best=30.59 @46
+  Epoch 135: train=28.77, val=77.66, best=30.59 @46
+
+  Best: epoch=46, val_loss=30.59
+Fusion training time: 4.5 min
+
+--- Extracting Embeddings ---
+Extracted 65 train + 17 test embeddings
+
+=== Training GNN Few-Shot ===
+  GNN Train: 55 (25 depressed, 30 non-depressed)
+  GNN Val:   10 (4 depressed, 6 non-depressed)
+  Test:       17
+Traceback (most recent call last):
+  File "/home/user/reproduce_multi_gpu.py", line 794, in <module>
+    results = train_gnn(train_emb, train_lab, test_emb, test_lab)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/reproduce_multi_gpu.py", line 650, in train_gnn
+    logits = gnn(support_emb, support_lab, query_emb)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/reproduce_multi_gpu.py", line 355, in forward
+    adj = self._build_adjacency(nodes)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/reproduce_multi_gpu.py", line 370, in _build_adjacency
+    adj[i, j] = self.edge_net(pair.unsqueeze(0)).squeeze()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+            ^^^^^^^^^^^^^
+  File "/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (1x152 and 148x64)

@@ -1,0 +1,20 @@
+DAIC-WOZ: 82 subj, 34 dep (41%)
+MODMA:    51 subj, 21 dep (41%)
+Combined: 133 subj, 55 dep (41%)
+
+=== Binary ===
+Model            Acc      F1    Prec     Rec     AUC
+--------------------------------------------------
+Ridge         0.6915  0.6294  0.6249  0.6364  0.7376
+GBDT          0.6843  0.5779  0.6331  0.5455  0.6870
+
+=== Per-dataset breakdown (Ridge) ===
+  DAIC-WOZ: Acc=0.6441, F1=0.5599, AUC=0.6763
+  MODMA: Acc=0.7691, F1=0.6996, AUC=0.7533
+
+=== Regression ===
+  Ridge: RMSE=6.289±0.309, R²=0.1966
+  DAIC-WOZ: Ridge RMSE=6.007±0.891
+  MODMA: Ridge RMSE=8.560±1.621
+
+Done.

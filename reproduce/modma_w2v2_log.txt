@@ -1,0 +1,35 @@
+Loading MODMA labels...
+  51 subjects with audio dirs
+  PHQ-9: min=0, max=25, mean=9.4, dep=21/51
+Loading wav2vec2-base...
+Loading weights:   0%|          | 0/211 [00:00<?, ?it/s]Loading weights: 100%|██████████| 211/211 [00:00<00:00, 15142.41it/s]
+[transformers] [1mWav2Vec2Model LOAD REPORT[0m from: facebook/wav2vec2-base
+Key                          | Status     |  | 
+-----------------------------+------------+--+-
+project_hid.weight           | UNEXPECTED |  | 
+project_hid.bias             | UNEXPECTED |  | 
+quantizer.weight_proj.bias   | UNEXPECTED |  | 
+project_q.bias               | UNEXPECTED |  | 
+project_q.weight             | UNEXPECTED |  | 
+quantizer.weight_proj.weight | UNEXPECTED |  | 
+quantizer.codevectors        | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  Loaded.
+  [10/51] 02010013: 29 clips, 292s, 14614 frames, PHQ9=11
+  [20/51] 02030002: 29 clips, 394s, 19705 frames, PHQ9=0
+  [30/51] 02030017: 29 clips, 314s, 15695 frames, PHQ9=3
+  [40/51] 02020021: 29 clips, 444s, 22189 frames, PHQ9=4
+  [50/51] 02010039: 29 clips, 383s, 19147 frames, PHQ9=25
+  [51/51] 02020004: 29 clips, 412s, 20567 frames, PHQ9=0
+
+Processed 51/51 subjects
+
+MODMA features: X=(51, 1536), y=(51,)
+PHQ-9: [0, 25], mean=9.4, std=8.5
+Depressed (>=10): 21/51
+Saved to /data/disk1/datasets/modma/w2v2_features.npz
+
+MODMA-only Ridge: Acc=0.7691, F1=0.6996 (51 subjects)
+Done.

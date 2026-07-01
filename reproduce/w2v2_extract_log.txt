@@ -1,0 +1,147 @@
+Loading wav2vec2-base...
+Loading weights:   0%|          | 0/211 [00:00<?, ?it/s]Loading weights: 100%|██████████| 211/211 [00:00<00:00, 23765.36it/s]
+[transformers] [1mWav2Vec2Model LOAD REPORT[0m from: facebook/wav2vec2-base
+Key                          | Status     |  | 
+-----------------------------+------------+--+-
+project_hid.bias             | UNEXPECTED |  | 
+project_q.bias               | UNEXPECTED |  | 
+project_hid.weight           | UNEXPECTED |  | 
+project_q.weight             | UNEXPECTED |  | 
+quantizer.weight_proj.bias   | UNEXPECTED |  | 
+quantizer.weight_proj.weight | UNEXPECTED |  | 
+quantizer.codevectors        | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+Model loaded on cuda:0
+Found 82 PIDs with audio
+
+Extracting features for 82 subjects...
+  [1/82] 300... audio=(32414, 768), PHQ8=2
+  [2/82] 301... audio=(41181, 768), PHQ8=3
+  [3/82] 302... audio=(37927, 768), PHQ8=4
+  [4/82] 303... audio=(44985, 768), PHQ8=0
+  [5/82] 304... audio=(39616, 768), PHQ8=6
+  [6/82] 305... audio=(44985, 768), PHQ8=7
+  [7/82] 306... audio=(42890, 768), PHQ8=0
+  [8/82] 307... audio=(44985, 768), PHQ8=4
+  [9/82] 308... audio=(43365, 768), PHQ8=22
+  [10/82] 309... audio=(35278, 768), PHQ8=15
+  [11/82] 310... audio=(42230, 768), PHQ8=4
+  [12/82] 311... audio=(39266, 768), PHQ8=21
+  [13/82] 312... audio=(39486, 768), PHQ8=2
+  [14/82] 313... audio=(37677, 768), PHQ8=7
+  [15/82] 314... audio=(44985, 768), PHQ8=1
+  [16/82] 315... audio=(44985, 768), PHQ8=2
+  [17/82] 316... audio=(43435, 768), PHQ8=6
+  [18/82] 317... audio=(40231, 768), PHQ8=8
+  [19/82] 318... audio=(29410, 768), PHQ8=3
+  [20/82] 319... audio=(33973, 768), PHQ8=13
+  [21/82] 320... audio=(41986, 768), PHQ8=11
+  [22/82] 321... audio=(41081, 768), PHQ8=20
+  [23/82] 322... audio=(44985, 768), PHQ8=5
+  [24/82] 323... audio=(41836, 768), PHQ8=1
+  [25/82] 324... audio=(36052, 768), PHQ8=5
+  [26/82] 325... audio=(43735, 768), PHQ8=10
+  [27/82] 326... audio=(34948, 768), PHQ8=2
+  [28/82] 327... audio=(34028, 768), PHQ8=4
+  [29/82] 328... audio=(44985, 768), PHQ8=4
+  [30/82] 329... audio=(35303, 768), PHQ8=1
+  [31/82] 330... audio=(38562, 768), PHQ8=12
+  [32/82] 331... audio=(42520, 768), PHQ8=8
+  [33/82] 332... audio=(43690, 768), PHQ8=18
+  [34/82] 333... audio=(44985, 768), PHQ8=5
+  [35/82] 334... audio=(44985, 768), PHQ8=5
+  [36/82] 335... audio=(41491, 768), PHQ8=12
+  [37/82] 336... audio=(44985, 768), PHQ8=7
+  [38/82] 337... audio=(44985, 768), PHQ8=10
+  [39/82] 338... audio=(29830, 768), PHQ8=15
+  [40/82] 339... audio=(43130, 768), PHQ8=11
+  [41/82] 340... audio=(29955, 768), PHQ8=1
+  [42/82] 341... audio=(43360, 768), PHQ8=7
+  [43/82] 343... audio=(44985, 768), PHQ8=9
+  [44/82] 344... audio=(44985, 768), PHQ8=11
+  [45/82] 345... audio=(39681, 768), PHQ8=15
+  [46/82] 346... audio=(44985, 768), PHQ8=23
+  [47/82] 347... audio=(30569, 768), PHQ8=16
+  [48/82] 348... audio=(35958, 768), PHQ8=20
+  [49/82] 349... audio=(44985, 768), PHQ8=5
+  [50/82] 350... audio=(44075, 768), PHQ8=11
+  [51/82] 351... audio=(38467, 768), PHQ8=14
+  [52/82] 352... audio=(37992, 768), PHQ8=10
+  [53/82] 353... audio=(39286, 768), PHQ8=11
+  [54/82] 354... audio=(28830, 768), PHQ8=18
+  [55/82] 355... audio=(33723, 768), PHQ8=10
+  [56/82] 356... audio=(44985, 768), PHQ8=10
+  [57/82] 357... audio=(20733, 768), PHQ8=7
+  [58/82] 358... audio=(32384, 768), PHQ8=7
+  [59/82] 359... audio=(44985, 768), PHQ8=13
+  [60/82] 360... audio=(22012, 768), PHQ8=4
+  [61/82] 361... audio=(32084, 768), PHQ8=0
+  [62/82] 362... audio=(29500, 768), PHQ8=20
+  [63/82] 363... audio=(44985, 768), PHQ8=0
+  [64/82] 364... audio=(44985, 768), PHQ8=0
+  [65/82] 365... audio=(44985, 768), PHQ8=12
+  [66/82] 366... audio=(44985, 768), PHQ8=0
+  [67/82] 367... audio=(44985, 768), PHQ8=19
+  [68/82] 368... audio=(44985, 768), PHQ8=7
+  [69/82] 369... audio=(44985, 768), PHQ8=0
+  [70/82] 370... audio=(44985, 768), PHQ8=0
+  [71/82] 371... audio=(44985, 768), PHQ8=9
+  [72/82] 372... audio=(44985, 768), PHQ8=13
+  [73/82] 373... audio=(44985, 768), PHQ8=9
+  [74/82] 374... audio=(44985, 768), PHQ8=2
+  [75/82] 375... audio=(31049, 768), PHQ8=5
+  [76/82] 376... audio=(44985, 768), PHQ8=12
+  [77/82] 377... audio=(44985, 768), PHQ8=16
+  [78/82] 378... audio=(43655, 768), PHQ8=1
+  [79/82] 379... audio=(44985, 768), PHQ8=2
+  [80/82] 380... audio=(44985, 768), PHQ8=10
+  [81/82] 381... audio=(44985, 768), PHQ8=16
+  [82/82] 382... audio=(41196, 768), PHQ8=0
+
+Data: X=(82, 1635), y=(82,)
+PHQ-8: [0, 23], mean=8.18, std=6.23
+Features saved to /data/disk1/datasets/diac_woz/w2v2_features.npz
+
+RidgeCV alpha: 1000.000
+Mean-predictor RMSE: 6.226
+Ridge: RMSE=5.627±0.539, R²=0.1639±0.1469
+Ratio: 0.9038
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2092: FutureWarning: The default value for l1_ratios will change from None to (0.0,) in version 1.10. From version 1.10 onwards, only array-like with values in [0, 1] will be allowed, None will be forbidden. To avoid this warning, explicitly set a value, e.g. l1_ratios=(0,).
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2137: FutureWarning: The default value of the parameter 'scoring' will change from None, i.e. accuracy, to 'neg_log_loss' in version 1.11. To silence this warning, explicitly set the scoring parameter: scoring='neg_log_loss' for the new, scoring='accuracy' or scoring=None for the old default.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2150: FutureWarning: The fitted attributes of LogisticRegressionCV will be simplified in scikit-learn 1.10 to remove redundancy. Set`use_legacy_attributes=False` to enable the new behavior now, or set it to `True` to silence this warning during the transition period while keeping the deprecated behavior for the time being. The default value of use_legacy_attributes will change from True to False in scikit-learn 1.10. See the docstring of LogisticRegressionCV for more details.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2092: FutureWarning: The default value for l1_ratios will change from None to (0.0,) in version 1.10. From version 1.10 onwards, only array-like with values in [0, 1] will be allowed, None will be forbidden. To avoid this warning, explicitly set a value, e.g. l1_ratios=(0,).
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2137: FutureWarning: The default value of the parameter 'scoring' will change from None, i.e. accuracy, to 'neg_log_loss' in version 1.11. To silence this warning, explicitly set the scoring parameter: scoring='neg_log_loss' for the new, scoring='accuracy' or scoring=None for the old default.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2150: FutureWarning: The fitted attributes of LogisticRegressionCV will be simplified in scikit-learn 1.10 to remove redundancy. Set`use_legacy_attributes=False` to enable the new behavior now, or set it to `True` to silence this warning during the transition period while keeping the deprecated behavior for the time being. The default value of use_legacy_attributes will change from True to False in scikit-learn 1.10. See the docstring of LogisticRegressionCV for more details.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2092: FutureWarning: The default value for l1_ratios will change from None to (0.0,) in version 1.10. From version 1.10 onwards, only array-like with values in [0, 1] will be allowed, None will be forbidden. To avoid this warning, explicitly set a value, e.g. l1_ratios=(0,).
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2137: FutureWarning: The default value of the parameter 'scoring' will change from None, i.e. accuracy, to 'neg_log_loss' in version 1.11. To silence this warning, explicitly set the scoring parameter: scoring='neg_log_loss' for the new, scoring='accuracy' or scoring=None for the old default.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2150: FutureWarning: The fitted attributes of LogisticRegressionCV will be simplified in scikit-learn 1.10 to remove redundancy. Set`use_legacy_attributes=False` to enable the new behavior now, or set it to `True` to silence this warning during the transition period while keeping the deprecated behavior for the time being. The default value of use_legacy_attributes will change from True to False in scikit-learn 1.10. See the docstring of LogisticRegressionCV for more details.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2092: FutureWarning: The default value for l1_ratios will change from None to (0.0,) in version 1.10. From version 1.10 onwards, only array-like with values in [0, 1] will be allowed, None will be forbidden. To avoid this warning, explicitly set a value, e.g. l1_ratios=(0,).
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2137: FutureWarning: The default value of the parameter 'scoring' will change from None, i.e. accuracy, to 'neg_log_loss' in version 1.11. To silence this warning, explicitly set the scoring parameter: scoring='neg_log_loss' for the new, scoring='accuracy' or scoring=None for the old default.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2150: FutureWarning: The fitted attributes of LogisticRegressionCV will be simplified in scikit-learn 1.10 to remove redundancy. Set`use_legacy_attributes=False` to enable the new behavior now, or set it to `True` to silence this warning during the transition period while keeping the deprecated behavior for the time being. The default value of use_legacy_attributes will change from True to False in scikit-learn 1.10. See the docstring of LogisticRegressionCV for more details.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2092: FutureWarning: The default value for l1_ratios will change from None to (0.0,) in version 1.10. From version 1.10 onwards, only array-like with values in [0, 1] will be allowed, None will be forbidden. To avoid this warning, explicitly set a value, e.g. l1_ratios=(0,).
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2137: FutureWarning: The default value of the parameter 'scoring' will change from None, i.e. accuracy, to 'neg_log_loss' in version 1.11. To silence this warning, explicitly set the scoring parameter: scoring='neg_log_loss' for the new, scoring='accuracy' or scoring=None for the old default.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2150: FutureWarning: The fitted attributes of LogisticRegressionCV will be simplified in scikit-learn 1.10 to remove redundancy. Set`use_legacy_attributes=False` to enable the new behavior now, or set it to `True` to silence this warning during the transition period while keeping the deprecated behavior for the time being. The default value of use_legacy_attributes will change from True to False in scikit-learn 1.10. See the docstring of LogisticRegressionCV for more details.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2092: FutureWarning: The default value for l1_ratios will change from None to (0.0,) in version 1.10. From version 1.10 onwards, only array-like with values in [0, 1] will be allowed, None will be forbidden. To avoid this warning, explicitly set a value, e.g. l1_ratios=(0,).
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2137: FutureWarning: The default value of the parameter 'scoring' will change from None, i.e. accuracy, to 'neg_log_loss' in version 1.11. To silence this warning, explicitly set the scoring parameter: scoring='neg_log_loss' for the new, scoring='accuracy' or scoring=None for the old default.
+  warnings.warn(
+/data/disk1/CancerEmotionSystem/venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:2150: FutureWarning: The fitted attributes of LogisticRegressionCV will be simplified in scikit-learn 1.10 to remove redundancy. Set`use_legacy_attributes=False` to enable the new behavior now, or set it to `True` to silence this warning during the transition period while keeping the deprecated behavior for the time being. The default value of use_legacy_attributes will change from True to False in scikit-learn 1.10. See the docstring of LogisticRegressionCV for more details.
+  warnings.warn(
+Binary: Acc=0.694±0.080

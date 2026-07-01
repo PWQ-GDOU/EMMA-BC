@@ -208,17 +208,19 @@ class MultimodalFusion(nn.Module):
         d_model=256,
         n_tasks=3,          # PHQ, GAD, PSQI
         fusion_dropout=0.2,
-        head_hidden=128,
+        head_hidden=32,
     ):
         super().__init__()
+        # Learned embedding for missing text (MODMA audio-only samples)
+        self.no_text_emb = nn.Parameter(torch.zeros(d_model))
         # Fusion: [ā; t̄; ā⊙t̄; |ā-t̄|]
         fusion_dim = d_model * 4  # 1024
 
         self.fusion = nn.Sequential(
-            nn.Linear(fusion_dim, d_model * 2),
+            nn.Linear(fusion_dim, 64),
             nn.GELU(),
             nn.Dropout(fusion_dropout),
-            nn.Linear(d_model * 2, d_model),
+            nn.Linear(64, d_model),
             nn.GELU(),
             nn.Dropout(fusion_dropout),
         )
@@ -245,14 +247,20 @@ class MultimodalFusion(nn.Module):
             ),
         })
 
-    def forward(self, audio_emb, text_emb):
+    def forward(self, audio_emb, text_emb, has_text=None):
         """
         Args:
             audio_emb: [B, d_model]
-            text_emb:  [B, d_model]
+            text_emb:  [B, d_model] — may contain garbage for audio-only
+            has_text:  [B] bool tensor, True=text available, False=audio-only
         Returns:
             dict of predictions: {"phq": [B,1], "gad": [B,1], "psqi": [B,1]}
         """
+        # Replace missing-text embeddings with learned parameter
+        if has_text is not None:
+            no_text_mask = (~has_text).unsqueeze(-1)  # [B,1]
+            text_emb = text_emb * has_text.unsqueeze(-1).float() + self.no_text_emb.unsqueeze(0) * no_text_mask.float()
+        
         # Fusion features
         fused = torch.cat([
             audio_emb,
@@ -368,21 +376,22 @@ class MultimodalClinicalModel(nn.Module):
 #
 # Store train_mean, train_std in checkpoint for reproducibility.
 
-    def forward(self, waveform, texts, attention_mask=None):
+    def forward(self, waveform, texts, attention_mask=None, has_text=None):
         """
         Masked mean fusion: zero-padded regions are excluded from pooling.
         
         Args:
             waveform: [B, T_audio] raw 16kHz audio (must be 16kHz)
-            texts: List[str] batch of transcripts
+            texts: List[str] batch of transcripts (empty string for audio-only)
             attention_mask: [B, T_audio] bool mask (True=valid, False=pad)
+            has_text: [B] bool tensor (True=has transcript, False=audio-only)
         Returns:
             dict: {"phq": [B,1], "gad": [B,1], "psqi": [B,1]}
         """
         device = waveform.device
         audio_emb = self.audio_encoder(waveform, attention_mask)  # [B, d_model]
         text_emb = self.text_encoder(texts, device)               # [B, d_model]
-        return self.fusion_head(audio_emb, text_emb)
+        return self.fusion_head(audio_emb, text_emb, has_text=has_text)
 
     def freeze_backbones_for_training(self):
         """Call ONCE before training. Sets frozen modules to eval() 
