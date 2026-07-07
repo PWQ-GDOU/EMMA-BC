@@ -373,6 +373,7 @@ class MultimodalClinicalModel(nn.Module):
         )
 
         self.video_encoder = VideoEncoder(d_model=d_model, d_video=d_video, n_layers=2, dropout=dropout)
+        self.video_proj = nn.Linear(d_model, 1)  # project to PHQ score
 
         self.text_encoder = TextEncoder(
             d_model=d_model,
@@ -432,9 +433,9 @@ class MultimodalClinicalModel(nn.Module):
         text_emb = self.text_encoder(texts, device)               # [B, d_model]
         outputs = self.fusion_head(audio_emb, text_emb, has_text=has_text)
         if video_emb is not None:
-            # Late fusion: average audio/text PHQ prediction with video
-            phq_tensor = outputs["phq"]
-            fused_phq = (phq_tensor + video_emb.unsqueeze(-1)) / 2.0
+            # Project video embedding to PHQ score, then average with audio+text
+            video_phq = self.video_proj(video_emb).squeeze(-1)  # [B]
+            fused_phq = (outputs["phq"] + video_phq) / 2.0
             outputs["phq"] = fused_phq
         return outputs
 
