@@ -356,6 +356,7 @@ class MultimodalClinicalModel(nn.Module):
         freeze_text_bert=True,
         n_tasks=3,
         audio_pretrained=None,
+        d_video=None,
     ):
         super().__init__()
         self.d_model = d_model
@@ -371,7 +372,7 @@ class MultimodalClinicalModel(nn.Module):
             pretrained_path=audio_pretrained,
         )
 
-        self.video_encoder = VideoEncoder(d_model=d_model, n_layers=2, dropout=dropout)
+        self.video_encoder = VideoEncoder(d_model=d_model, d_video=d_video, n_layers=2, dropout=dropout)
 
         self.text_encoder = TextEncoder(
             d_model=d_model,

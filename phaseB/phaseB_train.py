@@ -288,6 +288,11 @@ def main():
     
     # ── 2. Model ──
     print("\n═══ Building Model ═══")
+    # Detect video feature dimension for VideoEncoder
+    d_video = getattr(daic_ds, 'd_video', None)
+    if d_video:
+        print(f"Detected video feature dim: {d_video}")
+
     model = MultimodalClinicalModel(
         d_model=args.d_model,
         n_layers=4, n_heads=8,
@@ -295,6 +300,7 @@ def main():
         freeze_text_bert=True,
         n_tasks=1,  # PHQ-8 only for DAIC-WOZ
         audio_pretrained=args.audio_pretrained if os.path.exists(args.audio_pretrained) else None,
+        d_video=d_video,
     ).to(device)
     
     # CRITICAL Fix 2: freeze BatchNorm/LayerNorm in frozen backbones

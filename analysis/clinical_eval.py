@@ -352,9 +352,11 @@ def main():
     # Load model
     print("Loading model...")
     ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
+    d_video = getattr(val_ds, 'd_video', None)
     model = MultimodalClinicalModel(
         d_model=256, n_layers=4, n_heads=8,
         freeze_audio_w2v=True, freeze_text_bert=True, n_tasks=1,
+        d_video=d_video,
     ).to(device)
     model.load_state_dict(ckpt["model_state_dict"])
     
