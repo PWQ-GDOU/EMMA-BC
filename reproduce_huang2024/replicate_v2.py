@@ -16,7 +16,7 @@ PHQ_THRESHOLD = 10
 MAX_SEC = 8
 SR = 16000
 BATCH = 8
-EPOCHS = 30
+EPOCHS = 15
 LR_PEAK = 2e-5
 WARMUP = 3
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -126,7 +126,7 @@ def run_experiment(name, train_data, val_data, test_data, seed):
     crit = nn.CrossEntropyLoss(weight=torch.tensor([1.0, pos_w]).to(DEVICE))
     opt = torch.optim.AdamW(model.parameters(), lr=LR_PEAK, weight_decay=0.01)
     from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
-    sch = SequentialLR(opt, [LinearLR(opt, 0.1, WARMUP), CosineAnnealingLR(opt, EPOCHS-WARMUP)], [WARMUP])
+    sch = SequentialLR(opt, [LinearLR(opt, start_factor=0.1, end_factor=1.0, total_iters=WARMUP), CosineAnnealingLR(opt, T_max=EPOCHS-WARMUP)], [WARMUP])
     best_f1, best_state, patience = 0, None, 0
     for ep in range(1, EPOCHS+1):
         if ep == 6:
