@@ -3,7 +3,7 @@ Phase A Audio Emotion Encoder Pretraining — emotion2vec+ large edition.
 Replaces wav2vec2-base with emotion2vec/emotion2vec_plus_large for SOTA emotion features.
 """
 import os, sys, random, json, argparse, warnings
-os.environ[FUNASR_DISABLE_UPDATE] = 1
+os.environ["FUNASR_DISABLE_UPDATE"] = "1"
 import numpy as np
 from pathlib import Path
 import torch, torch.nn as nn
@@ -222,7 +222,6 @@ def main():
     # ── Load emotion2vec ──
     print("\n>>> Loading emotion2vec+ large...")
     from funasr import AutoModel
-    import os
     os.environ["FUNASR_DISABLE_UPDATE"] = "1"
     e2v = AutoModel(model="iic/emotion2vec_plus_large", trust_remote_code=True, device=args.device, disable_update=True)
     print(">>> emotion2vec+ large loaded")

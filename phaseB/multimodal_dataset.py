@@ -304,6 +304,7 @@ class MODMADataset(Dataset):
         for seg in segments[1:]:
             combined = torch.cat([combined, silence, seg])
 
+        original_len = min(combined.shape[0], self.max_samples)
         if combined.shape[0] > self.max_samples:
             combined = combined[:self.max_samples]
         elif combined.shape[0] < self.max_samples:
@@ -311,13 +312,13 @@ class MODMADataset(Dataset):
                 combined,
                 torch.zeros(self.max_samples - combined.shape[0])
             ])
-        return combined
+        return combined, original_len
 
     def __getitem__(self, idx):
         sample = self.samples[idx]
         sid = sample["subject_id"]
 
-        audio = self._load_audio(sample["wavs"])
+        audio, valid_len = self._load_audio(sample["wavs"])
 
         # Clinical labels
         row = self.labels_df.loc[sid]
@@ -373,7 +374,7 @@ def collate_daic(batch):
         texts.append(item["transcript"])
         phq_totals.append(item["phq_total"])
         vf = item.get("video_features")
-        video_list.append(vf if vf is not None else torch.zeros(1, 50))
+        video_list.append(vf if vf is not None else torch.zeros(1, 49))
         phq_items_list.append(item["phq_items"])
         pids.append(item["pid"])
 
@@ -382,8 +383,9 @@ def collate_daic(batch):
         phq_total_stack = torch.stack(phq_totals)
         phq_items_stack = torch.stack(phq_items_list)
     except RuntimeError:
-        # Fallback: use stack with reshape for safety
+        # Fallback: ensure all tensors are 1D for safe stacking
         phq_total_stack = torch.stack([t.reshape(-1) for t in phq_totals])
+        phq_items_stack = torch.stack([t.reshape(-1) for t in phq_items_list])
 
     return {
         "audio": torch.stack(audio_list),

@@ -288,7 +288,7 @@ def mc_dropout_eval(model, loader, normalizer, device, n_samples=30):
         texts = batch["texts"]
         labels = batch["phq_total"]
         
-        if torch.isnan(labels).all():
+        if torch.isnan(labels).any():
             continue
         if attention_mask.sum() < 1:
             continue
@@ -390,7 +390,7 @@ def main():
         texts = batch["texts"]
         labels = batch["phq_total"]
         
-        if torch.isnan(labels).all():
+        if torch.isnan(labels).any():
             continue
         if attention_mask.sum() < 1:
             continue
@@ -488,7 +488,7 @@ def predict_to_csv(model, loader, normalizer, device, output_path,
         texts = batch["texts"]
         pids = batch["pids"]
         labels = batch["phq_total"]
-        if torch.isnan(labels).all() or attention_mask.sum() < 1:
+        if torch.isnan(labels).any() or attention_mask.sum() < 1:
             continue
         for i in range(len(pids)):
             a = audio[i:i+1]; m = attention_mask[i:i+1]; t = texts[i]; pid = pids[i]
