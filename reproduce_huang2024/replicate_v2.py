@@ -167,4 +167,5 @@ def main():
         json.dump({'individual': results, 'avg': {k:float(v) for k,v in avg.items()}, 'std': {k:float(v) for k,v in std.items()}}, f, indent=2)
     print('Saved results_v2.json')
 
-if __na
+if __name__ == "__main__":
+    main()
