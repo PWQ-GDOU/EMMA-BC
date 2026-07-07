@@ -107,16 +107,16 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
         
         optimizer.zero_grad()
         ht = batch.get("has_text", None); ht = ht.to(device) if ht is not None else None
-        # Modality ablation
-        if modality == "audio_only":
-            ht = torch.zeros(audio.shape[0], dtype=torch.bool, device=device)
-        elif modality == "text_only":
+        # Modality ablation - 7 groups: A,V,T, A+V, V+T, A+T(full), A+V+T(all)
+        if modality in ("video_only", "text_only", "video_text"):
             audio = torch.zeros_like(audio)
+        if modality in ("video_only", "audio_only", "audio_video"):
+            ht = torch.zeros(audio.shape[0], dtype=torch.bool, device=device)
         
         vf_list = batch.get("video_features", None)
         vf = None
         vf_mask = None
-        if vf_list is not None and modality in ("full", "video_only", "audio_video"):
+        if vf_list is not None and modality in ("video_only", "audio_video", "video_text", "all"):
             max_t = max(v.shape[0] for v in vf_list)
             vf_p = []
             vf_m = []
@@ -162,16 +162,16 @@ def val_epoch(model, loader, normalizer, device, modality="full"):
         
         labels_norm = normalizer.normalize(labels.unsqueeze(-1)).squeeze(-1)
         ht = batch.get("has_text", None); ht = ht.to(device) if ht is not None else None
-        # Modality ablation
-        if modality == "audio_only":
-            ht = torch.zeros(audio.shape[0], dtype=torch.bool, device=device)
-        elif modality == "text_only":
+        # Modality ablation - 7 groups: A,V,T, A+V, V+T, A+T(full), A+V+T(all)
+        if modality in ("video_only", "text_only", "video_text"):
             audio = torch.zeros_like(audio)
+        if modality in ("video_only", "audio_only", "audio_video"):
+            ht = torch.zeros(audio.shape[0], dtype=torch.bool, device=device)
         
         vf_list = batch.get("video_features", None)
         vf = None
         vf_mask = None
-        if vf_list is not None and modality in ("full", "video_only", "audio_video"):
+        if vf_list is not None and modality in ("video_only", "audio_video", "video_text", "all"):
             max_t = max(v.shape[0] for v in vf_list)
             vf_p = []
             vf_m = []
@@ -238,7 +238,7 @@ def main():
                         help="min(4, CPU/2). Higher causes torchaudio I/O contention")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--modality", type=str, default="full",
-                        choices=["full", "audio_only", "text_only", "video_only", "audio_video"],
+                        choices=["full", "audio_only", "text_only", "video_only", "audio_video", "video_text", "all"],
                         help="Ablation: full multimodal / audio_only / text_only")
     parser.add_argument("--resume", type=str, default=None)
     parser.add_argument("--val_split", type=float, default=0.15)
