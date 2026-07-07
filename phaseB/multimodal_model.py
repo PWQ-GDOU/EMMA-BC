@@ -427,11 +427,13 @@ class MultimodalClinicalModel(nn.Module):
         if video_features is not None:
             video_emb = self.video_encoder(video_features, video_mask)  # [B, d_model]
         text_emb = self.text_encoder(texts, device)               # [B, d_model]
-        fused = self.fusion_head(audio_emb, text_emb, has_text=has_text)
+        outputs = self.fusion_head(audio_emb, text_emb, has_text=has_text)
         if video_emb is not None:
-            # Late fusion: average audio/text fused with video
-            fused = (fused + video_emb) / 2.0
-        return fused
+            # Late fusion: average audio/text PHQ prediction with video
+            phq_tensor = outputs["phq"]
+            fused_phq = (phq_tensor + video_emb.unsqueeze(-1)) / 2.0
+            outputs["phq"] = fused_phq
+        return outputs
 
     def freeze_backbones_for_training(self):
         """Call ONCE before training. Sets frozen modules to eval() 

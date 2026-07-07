@@ -3,6 +3,7 @@ Phase A Audio Emotion Encoder Pretraining — emotion2vec+ large edition.
 Replaces wav2vec2-base with emotion2vec/emotion2vec_plus_large for SOTA emotion features.
 """
 import os, sys, random, json, argparse, warnings
+os.environ[FUNASR_DISABLE_UPDATE] = 1
 import numpy as np
 from pathlib import Path
 import torch, torch.nn as nn
@@ -119,9 +120,9 @@ class EmotionEncoder(nn.Module):
     def forward(self, waveform, attention_mask):
         # emotion2vec: input [B, T_raw], output [B, T_feat, d_model]
         with torch.no_grad():
-            result = self.e2v(waveform, output_dir=None)
-            # result is dict with keys like 'feats', 'scores'
-            features = result['feats']  # [B, T, d_model]
+            result = self.e2v.model.extract_features(waveform)
+            # result is dict with keys: 'x', 'padding_mask', 'layer_results'
+            features = result['x']  # [B, T, d_model]
         
         # Conv: [B, T, d] → [B, d, T] → [B, d, T'] → [B, T', d]
         features = features.transpose(1, 2)
@@ -221,7 +222,9 @@ def main():
     # ── Load emotion2vec ──
     print("\n>>> Loading emotion2vec+ large...")
     from funasr import AutoModel
-    e2v = AutoModel(model="iic/emotion2vec_plus_large", trust_remote_code=True, device=args.device)
+    import os
+    os.environ["FUNASR_DISABLE_UPDATE"] = "1"
+    e2v = AutoModel(model="iic/emotion2vec_plus_large", trust_remote_code=True, device=args.device, disable_update=True)
     print(">>> emotion2vec+ large loaded")
 
     # ── Data ──
