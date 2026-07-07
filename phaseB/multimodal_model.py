@@ -52,7 +52,9 @@ class SinusoidalPositionalEncoding(nn.Module):
 
 class VideoEncoder(nn.Module):
     """OpenFace facial features → d_model embeddings via MLP + temporal pooling."""
-    def __init__(self, d_model=256, d_video=49, n_layers=2, dropout=0.1):
+    def __init__(self, d_model=256, d_video=None, n_layers=2, dropout=0.1):
+        if d_video is None:
+            d_video = 49  # legacy fallback
         super().__init__()
         layers = []
         in_dim = d_video

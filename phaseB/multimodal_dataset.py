@@ -95,6 +95,16 @@ class DAICWOZDataset(Dataset):
 
         print(f"[DAIC-WOZ:{split}] {len(self.samples)} participants")
 
+        # Auto-detect OpenFace feature dimension
+        self.d_video = None
+        for s in self.samples[:5]:
+            vf_result = self._load_video_features(s["pid"])
+            if vf_result[0] is not None:
+                self.d_video = vf_result[1]
+                break
+        if self.d_video:
+            print(f"[DAIC-WOZ:{split}] Video feature dim: {self.d_video}")
+
     def __len__(self):
         return len(self.samples)
 
@@ -124,11 +134,11 @@ class DAICWOZDataset(Dataset):
         import pandas as pd
         features_dir = self.data_dir / (str(pid) + "_P") / "features"
         if not features_dir.exists():
-            return None
+            return None, None
         # Find OpenFace CSV
         csv_files = list(features_dir.glob("*OpenFace*.csv"))
         if not csv_files:
-            return None
+            return None, None
         try:
             df = pd.read_csv(csv_files[0])
             # Select feature columns (skip frame, timestamp, confidence, success)
@@ -140,7 +150,7 @@ class DAICWOZDataset(Dataset):
                 # Uniformly sample
                 indices = torch.linspace(0, features.shape[0]-1, max_frames).long()
                 features = features[indices]
-            return features  # [T, d_video]
+            return features, features.shape[1]  # [T, d_video], actual_dim
         except Exception as e:
             print(f"WARNING: Failed to load video for {pid}: {e}")
             return None
@@ -179,7 +189,8 @@ class DAICWOZDataset(Dataset):
             phq_items = torch.full((8,), float('nan'))
 
         # Load video features (OpenFace)
-        video_features = self._load_video_features(pid)
+        vf_result = self._load_video_features(pid)
+        video_features = vf_result[0] if vf_result[0] is not None else None
 
         return {
             "audio": audio,
