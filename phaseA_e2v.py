@@ -229,7 +229,16 @@ def main():
     n_train = int(0.8 * len(dataset))
     n_val = len(dataset) - n_train
     generator = torch.Generator().manual_seed(SEED)
-    train_ds, val_ds = torch.utils.data.random_split(dataset, [n_train, n_val], generator=generator)
+    # Actor-stratified split to prevent data leakage
+    actor_ids = [s[2] for s in dataset.samples]
+    unique_actors = list(set(actor_ids))
+    n_val_actors = max(int(len(unique_actors) * 0.15), 2)
+    rng = __import__('random').Random(42)
+    val_actors = set(rng.sample(unique_actors, n_val_actors))
+    train_idx = [i for i, aid in enumerate(actor_ids) if aid not in val_actors]
+    val_idx = [i for i, aid in enumerate(actor_ids) if aid in val_actors]
+    train_ds = torch.utils.data.Subset(dataset, train_idx)
+    val_ds = torch.utils.data.Subset(dataset, val_idx)
     print(f"Train: {len(train_ds)}, Val: {len(val_ds)}")
 
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,

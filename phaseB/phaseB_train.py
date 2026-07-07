@@ -388,8 +388,6 @@ def main():
             "optimizer_state_dict": optimizer.state_dict(),
             "scheduler_state_dict": scheduler.state_dict(),
             "label_normalizer": normalizer.state_dict(),
-            "best_mae": best_mae,
-                "best_mae": best_mae,
             "best_ccc": best_ccc,
             "global_step": (epoch - 1) * len(train_loader),
             "history": history,
