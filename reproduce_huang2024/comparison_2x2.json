@@ -1,0 +1,87 @@
+{
+  "huang2024_claimed_acc": 0.9649,
+  "experiments": {
+    "A1_Our_Random": {
+      "name": "A1_Our_Random",
+      "method": "Our_Frozen_LR",
+      "leak": 61,
+      "n_test_pids": 61,
+      "test_acc": 0.8283261802575107,
+      "test_f1": 0.7872340425531915,
+      "per_subject_acc": 0.9016393442622951,
+      "cm": [
+        [
+          119,
+          19
+        ],
+        [
+          21,
+          74
+        ]
+      ],
+      "elapsed_s": 16.913445949554443
+    },
+    "A2_Our_Participant": {
+      "name": "A2_Our_Participant",
+      "method": "Our_Frozen_LR",
+      "leak": 0,
+      "n_test_pids": 14,
+      "test_acc": 0.6727941176470589,
+      "test_f1": 0.6590038314176245,
+      "per_subject_acc": 0.7142857142857143,
+      "cm": [
+        [
+          97,
+          11
+        ],
+        [
+          78,
+          86
+        ]
+      ],
+      "elapsed_s": 17.255443334579468
+    },
+    "B1_Huang_Random": {
+      "name": "B1_Huang_Random",
+      "method": "Huang2024_Finetune",
+      "leak": 61,
+      "n_test_pids": 61,
+      "test_acc": 0.592274678111588,
+      "test_f1": 0.0,
+      "per_subject_acc": 0.5573770491803278,
+      "best_val_acc": 0.592274678111588,
+      "cm": [
+        [
+          138,
+          0
+        ],
+        [
+          95,
+          0
+        ]
+      ],
+      "elapsed_s": 990.2572491168976
+    },
+    "B2_Huang_Participant": {
+      "name": "B2_Huang_Participant",
+      "method": "Huang2024_Finetune",
+      "leak": 0,
+      "n_test_pids": 14,
+      "test_acc": 0.6727941176470589,
+      "test_f1": 0.6509803921568628,
+      "per_subject_acc": 0.7857142857142857,
+      "best_val_acc": 0.6727941176470589,
+      "cm": [
+        [
+          100,
+          8
+        ],
+        [
+          81,
+          83
+        ]
+      ],
+      "elapsed_s": 1008.7171945571899
+    }
+  }
+}
