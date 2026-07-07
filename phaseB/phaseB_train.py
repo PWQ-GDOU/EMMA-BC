@@ -84,7 +84,7 @@ class LabelNormalizer:
 # Training
 # ═══════════════════════════════════════════
 
-def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epochs):
+def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epochs, modality="full"):
     model.train()
     losses = 0.0
     n_batches = 0
@@ -107,7 +107,26 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
         
         optimizer.zero_grad()
         ht = batch.get("has_text", None); ht = ht.to(device) if ht is not None else None
-        outputs = model(audio, texts, attention_mask=attention_mask, has_text=ht)
+        # Modality ablation
+        if modality == "audio_only":
+            ht = torch.zeros(audio.shape[0], dtype=torch.bool, device=device)
+        elif modality == "text_only":
+            audio = torch.zeros_like(audio)
+        
+        vf_list = batch.get("video_features", None)
+        vf = None
+        vf_mask = None
+        if vf_list is not None and modality in ("full", "video_only", "audio_video"):
+            max_t = max(v.shape[0] for v in vf_list)
+            vf_p = []
+            vf_m = []
+            for v in vf_list:
+                pad_len = max_t - v.shape[0]
+                vf_p.append(torch.cat([v, torch.zeros(pad_len, v.shape[1])]))
+                vf_m.append(torch.cat([torch.ones(v.shape[0]), torch.zeros(pad_len)]))
+            vf = torch.stack(vf_p).to(device)
+            vf_mask = torch.stack(vf_m).to(device)
+        outputs = model(audio, texts, attention_mask=attention_mask, has_text=ht, video_features=vf, video_mask=vf_mask)
         pred = outputs["phq"].squeeze(-1)  # [B]
         
         loss = nn.functional.mse_loss(pred, labels_norm)
@@ -123,7 +142,7 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
 
 
 @torch.no_grad()
-def val_epoch(model, loader, normalizer, device):
+def val_epoch(model, loader, normalizer, device, modality="full"):
     model.eval()
     norm_mean = normalizer.mean.to(device) if normalizer.mean is not None else None
     norm_std = normalizer.std.to(device) if normalizer.std is not None else None
@@ -143,7 +162,26 @@ def val_epoch(model, loader, normalizer, device):
         
         labels_norm = normalizer.normalize(labels.unsqueeze(-1)).squeeze(-1)
         ht = batch.get("has_text", None); ht = ht.to(device) if ht is not None else None
-        outputs = model(audio, texts, attention_mask=attention_mask, has_text=ht)
+        # Modality ablation
+        if modality == "audio_only":
+            ht = torch.zeros(audio.shape[0], dtype=torch.bool, device=device)
+        elif modality == "text_only":
+            audio = torch.zeros_like(audio)
+        
+        vf_list = batch.get("video_features", None)
+        vf = None
+        vf_mask = None
+        if vf_list is not None and modality in ("full", "video_only", "audio_video"):
+            max_t = max(v.shape[0] for v in vf_list)
+            vf_p = []
+            vf_m = []
+            for v in vf_list:
+                pad_len = max_t - v.shape[0]
+                vf_p.append(torch.cat([v, torch.zeros(pad_len, v.shape[1])]))
+                vf_m.append(torch.cat([torch.ones(v.shape[0]), torch.zeros(pad_len)]))
+            vf = torch.stack(vf_p).to(device)
+            vf_mask = torch.stack(vf_m).to(device)
+        outputs = model(audio, texts, attention_mask=attention_mask, has_text=ht, video_features=vf, video_mask=vf_mask)
         preds_norm = outputs["phq"].squeeze(-1)
         
         loss = nn.functional.mse_loss(preds_norm, labels_norm)
@@ -199,6 +237,9 @@ def main():
     parser.add_argument("--num_workers", type=int, default=0,
                         help="min(4, CPU/2). Higher causes torchaudio I/O contention")
     parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--modality", type=str, default="full",
+                        choices=["full", "audio_only", "text_only", "video_only", "audio_video"],
+                        help="Ablation: full multimodal / audio_only / text_only")
     parser.add_argument("--resume", type=str, default=None)
     parser.add_argument("--val_split", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=42)
@@ -340,8 +381,8 @@ def main():
 
     print(f"\n═══ Training ({start_epoch} \u2192 {args.epochs}) ═══")
     for epoch in range(start_epoch, args.epochs + 1):
-        train_loss = train_epoch(model, train_loader, normalizer, optimizer, device, epoch, args.epochs)
-        metrics = val_epoch(model, val_loader, normalizer, device)
+        train_loss = train_epoch(model, train_loader, normalizer, optimizer, device, epoch, args.epochs, args.modality)
+        metrics = val_epoch(model, val_loader, normalizer, device, args.modality)
         # Epoch-level scheduler (CosineAnnealingWarmRestarts is epoch-based).
         # Skipped batches in train_epoch do NOT affect scheduler timing.
         scheduler.step()

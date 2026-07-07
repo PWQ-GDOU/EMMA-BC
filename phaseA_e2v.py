@@ -47,7 +47,8 @@ class EmotionDataset(Dataset):
                     emo_name = RAVDESS_EMO.get(emo_code)
                     if emo_name and emo_name in EMOTION_MAP:
                         label = EMOTION_MAP[emo_name]
-                        self.samples.append((str(wav_path), label))
+                        actor_id = parts[-1]
+                        self.samples.append((str(wav_path), label, actor_id))
         self.max_len = int(max_duration * sr)
         print(f"Loaded {len(self.samples)} RAVDESS samples")
         from collections import Counter
@@ -59,7 +60,7 @@ class EmotionDataset(Dataset):
 
     def __getitem__(self, idx):
         import torchaudio
-        path, label = self.samples[idx]
+        path, label, _ = self.samples[idx]  # (path, label, actor_id)
         try:
             wav, native_sr = torchaudio.load(path)
         except Exception as e:

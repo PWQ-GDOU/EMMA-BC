@@ -50,6 +50,37 @@ class SinusoidalPositionalEncoding(nn.Module):
         return self.dropout(x + self.pe[: x.size(1), :])
 
 
+class VideoEncoder(nn.Module):
+    """OpenFace facial features → d_model embeddings via MLP + temporal pooling."""
+    def __init__(self, d_model=256, d_video=49, n_layers=2, dropout=0.1):
+        super().__init__()
+        layers = []
+        in_dim = d_video
+        hidden = d_model * 2
+        for i in range(n_layers):
+            layers.append(nn.Linear(in_dim, hidden if i == 0 else d_model))
+            layers.append(nn.GELU())
+            layers.append(nn.Dropout(dropout))
+            in_dim = hidden if i == 0 else d_model
+        self.mlp = nn.Sequential(*layers)
+        self.final_proj = nn.Linear(d_model, d_model)
+        self.layer_norm = nn.LayerNorm(d_model)
+
+    def forward(self, video_features, video_mask=None):
+        # video_features: [B, T, d_video] — OpenFace per-frame features
+        B, T, D = video_features.shape
+        x = video_features.reshape(B * T, D)  # nn.Linear expects 2D
+        x = self.mlp(x)  # [B*T, d_model]
+        x = x.reshape(B, T, -1)  # [B, T, d_model]
+        if video_mask is not None:
+            mask = video_mask.unsqueeze(-1).float()  # [B, T, 1]
+            x = x * mask
+            pooled = x.sum(dim=1) / mask.sum(dim=1).clamp(min=1)  # [B, d_model]
+        else:
+            pooled = x.mean(dim=1)  # [B, d_model]
+        return self.layer_norm(self.final_proj(pooled))  # [B, d_model]
+
+
 class AudioEncoder(nn.Module):
     """
     Audio feature extractor: wav2vec2 → Conv → Transformer → pooled embedding.
@@ -338,6 +369,8 @@ class MultimodalClinicalModel(nn.Module):
             pretrained_path=audio_pretrained,
         )
 
+        self.video_encoder = VideoEncoder(d_model=d_model, n_layers=2, dropout=dropout)
+
         self.text_encoder = TextEncoder(
             d_model=d_model,
             freeze_bert=freeze_text_bert,
@@ -376,7 +409,7 @@ class MultimodalClinicalModel(nn.Module):
 #
 # Store train_mean, train_std in checkpoint for reproducibility.
 
-    def forward(self, waveform, texts, attention_mask=None, has_text=None):
+    def forward(self, waveform, texts, attention_mask=None, has_text=None, video_features=None, video_mask=None):
         """
         Masked mean fusion: zero-padded regions are excluded from pooling.
         
@@ -390,8 +423,15 @@ class MultimodalClinicalModel(nn.Module):
         """
         device = waveform.device
         audio_emb = self.audio_encoder(waveform, attention_mask)  # [B, d_model]
+        video_emb = None
+        if video_features is not None:
+            video_emb = self.video_encoder(video_features, video_mask)  # [B, d_model]
         text_emb = self.text_encoder(texts, device)               # [B, d_model]
-        return self.fusion_head(audio_emb, text_emb, has_text=has_text)
+        fused = self.fusion_head(audio_emb, text_emb, has_text=has_text)
+        if video_emb is not None:
+            # Late fusion: average audio/text fused with video
+            fused = (fused + video_emb) / 2.0
+        return fused
 
     def freeze_backbones_for_training(self):
         """Call ONCE before training. Sets frozen modules to eval() 

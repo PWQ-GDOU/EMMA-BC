@@ -118,6 +118,33 @@ class DAICWOZDataset(Dataset):
             ])
         return waveform, original_len
 
+
+    def _load_video_features(self, pid):
+        """Load OpenFace Pose+Gaze+AUs features. Returns [T, 50] tensor or None."""
+        import pandas as pd
+        features_dir = self.data_dir / (str(pid) + "_P") / "features"
+        if not features_dir.exists():
+            return None
+        # Find OpenFace CSV
+        csv_files = list(features_dir.glob("*OpenFace*.csv"))
+        if not csv_files:
+            return None
+        try:
+            df = pd.read_csv(csv_files[0])
+            # Select feature columns (skip frame, timestamp, confidence, success)
+            feat_cols = [col for col in df.columns if col not in ["frame", "timestamp", "confidence", "success"]]
+            features = torch.tensor(df[feat_cols].values, dtype=torch.float32)
+            # Clip to max 9000 frames (5 min at 30fps) to limit memory
+            max_frames = 9000
+            if features.shape[0] > max_frames:
+                # Uniformly sample
+                indices = torch.linspace(0, features.shape[0]-1, max_frames).long()
+                features = features[indices]
+            return features  # [T, d_video]
+        except Exception as e:
+            print(f"WARNING: Failed to load video for {pid}: {e}")
+            return None
+
     def _load_transcript(self, path):
         """Load transcript CSV, concatenate all text segments."""
         if path is None:
@@ -151,6 +178,9 @@ class DAICWOZDataset(Dataset):
             phq_total = torch.tensor(float('nan'))
             phq_items = torch.full((8,), float('nan'))
 
+        # Load video features (OpenFace)
+        video_features = self._load_video_features(pid)
+
         return {
             "audio": audio,
             "transcript": transcript,
@@ -158,6 +188,7 @@ class DAICWOZDataset(Dataset):
             "phq_items": phq_items,      # per-item scores
             "pid": pid,
             "valid_len": valid_len,
+            "video_features": video_features,  # [T, 50] or None
         }
 
 
@@ -320,6 +351,7 @@ def collate_daic(batch):
     Uses valid_len from dataset to set padding regions to 0."""
     audio_list = []
     mask_list = []
+    video_list = []
     texts = []
     phq_totals = []
     phq_items_list = []
@@ -340,6 +372,8 @@ def collate_daic(batch):
         mask_list.append(mask)
         texts.append(item["transcript"])
         phq_totals.append(item["phq_total"])
+        vf = item.get("video_features")
+        video_list.append(vf if vf is not None else torch.zeros(1, 50))
         phq_items_list.append(item["phq_items"])
         pids.append(item["pid"])
 
@@ -358,6 +392,7 @@ def collate_daic(batch):
         "phq_total": phq_total_stack,
         "phq_items": phq_items_stack,
         "pids": pids,
+        "video_features": video_list,  # list of [T, 50] tensors
     }
 
 
@@ -366,6 +401,7 @@ def collate_modma(batch):
     Uses valid_len from dataset to set padding regions to 0."""
     audio_list = []
     mask_list = []
+    video_list = []
     texts = []
     phq_list = []
     gad_list = []
