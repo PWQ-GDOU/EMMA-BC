@@ -1,0 +1,15 @@
+{
+  "accuracy": 0.4444,
+  "sensitivity": 0.0,
+  "specificity": 1.0,
+  "ppv": 0.0,
+  "npv": 0.4444,
+  "f1": 0.0,
+  "confusion": {
+    "TP": 0,
+    "TN": 4,
+    "FP": 0,
+    "FN": 5
+  },
+  "threshold": 10.0
+}

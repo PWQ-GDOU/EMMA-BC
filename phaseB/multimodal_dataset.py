@@ -54,7 +54,15 @@ class DAICWOZDataset(Dataset):
         self.max_samples = int(max_audio_sec * sample_rate)
         self.min_samples = 16000
         # removed — see above
-        self.filter_interviewer = False  # Wav2Vec2 needs >= 6400 samples
+        self.min_samples = int(min_audio_sec * sample_rate)  # use param, not hardcoded
+        self.filter_interviewer = filter_interviewer  # use param, not hardcoded
+        # Ellie interviewer prompt prefixes for filtering
+        self.ELLIE_PROMPTS = [
+            "ellie:", "how are you doing today", "tell me about",
+            "can you tell me", "thank you for sharing", "i hear you saying",
+            "let me ask you", "i would like to", "how would you describe",
+            "what would you say", "so you mentioned", "you mentioned earlier",
+        ]
         self.split = split
 
         # Load PHQ-8 labels
@@ -99,14 +107,16 @@ class DAICWOZDataset(Dataset):
             waveform = torchaudio.functional.resample(
                 waveform.unsqueeze(0), sr, self.sample_rate
             ).squeeze(0)
+        original_len = waveform.shape[0]
         if waveform.shape[0] > self.max_samples:
             waveform = waveform[:self.max_samples]
+            original_len = self.max_samples
         elif waveform.shape[0] < self.max_samples:
             waveform = torch.cat([
                 waveform,
                 torch.zeros(self.max_samples - waveform.shape[0])
             ])
-        return waveform
+        return waveform, original_len
 
     def _load_transcript(self, path):
         """Load transcript CSV, concatenate all text segments."""
@@ -122,7 +132,7 @@ class DAICWOZDataset(Dataset):
         sample = self.samples[idx]
         pid = sample["pid"]
 
-        audio = self._load_audio(sample["audio"])
+        audio, valid_len = self._load_audio(sample["audio"])
         transcript = self._load_transcript(sample["transcript"])
 
         # PHQ-8 labels: 8 items + total
@@ -147,6 +157,7 @@ class DAICWOZDataset(Dataset):
             "phq_total": phq_total,      # regression target
             "phq_items": phq_items,      # per-item scores
             "pid": pid,
+            "valid_len": valid_len,
         }
 
 
@@ -202,13 +213,14 @@ class MODMADataset(Dataset):
         sample_rate: target sample rate
         max_audio_sec: max duration per sample
     """
-    def __init__(self, data_dir, xlsx_path, sample_rate=16000, max_audio_sec=300):
+    def __init__(self, data_dir, xlsx_path, sample_rate=16000, max_audio_sec=300, min_audio_sec=1.0, filter_interviewer=False):
         self.data_dir = Path(data_dir)
         self.sample_rate = sample_rate
         self.max_samples = int(max_audio_sec * sample_rate)
         self.min_samples = 16000
         # removed — see above
-        self.filter_interviewer = False  # Wav2Vec2 needs >= 6400 samples
+        self.min_samples = int(min_audio_sec * sample_rate)  # use param, not hardcoded
+        self.filter_interviewer = filter_interviewer  # use param, not hardcoded
 
         # Load clinical labels
         self.labels_df = pd.read_excel(xlsx_path)
@@ -304,7 +316,8 @@ class MODMADataset(Dataset):
 
 def collate_daic(batch):
     """Collate DAIC-WOZ batch with explicit audio attention_mask.
-    mask shape [B, T]: 1.0=valid audio, 0.0=zero-padding."""
+    mask shape [B, T]: 1.0=valid audio, 0.0=zero-padding.
+    Uses valid_len from dataset to set padding regions to 0."""
     audio_list = []
     mask_list = []
     texts = []
@@ -312,12 +325,18 @@ def collate_daic(batch):
     phq_items_list = []
     pids = []
 
+    max_len = max(item["audio"].shape[0] for item in batch)
     for item in batch:
         audio = item["audio"]
         L = audio.shape[0]
+        # Pad audio if shorter than batch max
+        if L < max_len:
+            audio = torch.cat([audio, torch.zeros(max_len - L)])
         audio_list.append(audio)
-        # Generate mask: 1.0 for valid samples, 0.0 for padding
-        mask = torch.ones(L)
+        # Mask: 1.0 for real audio (up to valid_len), 0.0 for zero-padding
+        valid_len = item.get("valid_len", L)
+        mask = torch.zeros(max_len)
+        mask[:min(valid_len, max_len)] = 1.0
         mask_list.append(mask)
         texts.append(item["transcript"])
         phq_totals.append(item["phq_total"])
@@ -329,8 +348,8 @@ def collate_daic(batch):
         phq_total_stack = torch.stack(phq_totals)
         phq_items_stack = torch.stack(phq_items_list)
     except RuntimeError:
-        phq_total_stack = torch.tensor(phq_totals)
-        phq_items_stack = torch.tensor(phq_items_list)
+        # Fallback: use stack with reshape for safety
+        phq_total_stack = torch.stack([t.reshape(-1) for t in phq_totals])
 
     return {
         "audio": torch.stack(audio_list),
@@ -343,7 +362,8 @@ def collate_daic(batch):
 
 
 def collate_modma(batch):
-    """Collate MODMA batch with explicit audio attention_mask."""
+    """Collate MODMA batch with explicit audio attention_mask.
+    Uses valid_len from dataset to set padding regions to 0."""
     audio_list = []
     mask_list = []
     texts = []
@@ -352,11 +372,16 @@ def collate_modma(batch):
     psqi_list = []
     sids = []
 
+    max_len = max(item["audio"].shape[0] for item in batch)
     for item in batch:
         audio = item["audio"]
         L = audio.shape[0]
+        if L < max_len:
+            audio = torch.cat([audio, torch.zeros(max_len - L)])
         audio_list.append(audio)
-        mask = torch.ones(L)
+        valid_len = item.get("valid_len", L)
+        mask = torch.zeros(max_len)
+        mask[:min(valid_len, max_len)] = 1.0
         mask_list.append(mask)
         texts.append(item["transcript"])
         phq_list.append(item["phq"])

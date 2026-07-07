@@ -77,31 +77,39 @@ class EmotionDataset(Dataset):
         # ── RAVDESS ──
         if ravdess_root and Path(ravdess_root).exists():
             for wav_path in Path(ravdess_root).rglob("*.wav"):
-                fname = wav_path.stem
-                parts = fname.split("-")
-                if len(parts) >= 3:
-                    emo_code = parts[2]
-                    emo_name = RAVDESS_EMO.get(emo_code)
-                    if emo_name and emo_name in EMOTION_MAP:
-                        self.samples.append((str(wav_path), EMOTION_MAP[emo_name], "ravdess"))
+                try:
+                    fname = wav_path.stem
+                    parts = fname.split("-")
+                    if len(parts) >= 3:
+                        emo_code = parts[2]
+                        emo_name = RAVDESS_EMO.get(emo_code)
+                        if emo_name and emo_name in EMOTION_MAP:
+                            actor_id = parts[-1]  # RAVDESS format
+                            self.samples.append((str(wav_path), EMOTION_MAP[emo_name], "ravdess", actor_id))
+                except Exception:
+                    print(f"WARNING: Skipping corrupted RAVDESS file: {wav_path}")
         
         # ── CREMA-D ──
         if cremad_root and Path(cremad_root).exists():
             for wav_path in Path(cremad_root).glob("*.wav"):
-                fname = wav_path.stem
-                parts = fname.split("_")
-                if len(parts) >= 3:
-                    emo_code = parts[2]
-                    emo_name = CREMAD_EMO.get(emo_code)
-                    if emo_name and emo_name in EMOTION_MAP:
-                        self.samples.append((str(wav_path), EMOTION_MAP[emo_name], "cremad"))
+                try:
+                    fname = wav_path.stem
+                    parts = fname.split("_")
+                    if len(parts) >= 3:
+                        emo_code = parts[2]
+                        emo_name = CREMAD_EMO.get(emo_code)
+                        if emo_name and emo_name in EMOTION_MAP:
+                            actor_id = parts[0]  # CREMA-D speaker ID
+                            self.samples.append((str(wav_path), EMOTION_MAP[emo_name], "cremad", actor_id))
+                except Exception:
+                    print(f"WARNING: Skipping corrupted CREMA-D file: {wav_path}")
         
         print(f"Loaded {len(self.samples)} samples ({sum(1 for s in self.samples if s[2]=='ravdess')} RAVDESS, {sum(1 for s in self.samples if s[2]=='cremad')} CREMA-D)")
         self._print_distribution()
     
     def _print_distribution(self):
         dist = defaultdict(int)
-        for _, label, _ in self.samples:
+        for _, label, _, _ in self.samples:
             dist[EMOTION_NAMES[label]] += 1
         print("Distribution:", dict(dist))
     
@@ -109,11 +117,14 @@ class EmotionDataset(Dataset):
         return len(self.samples)
     
     def __getitem__(self, idx):
-        path, label, _ = self.samples[idx]
+        path, label, _, _ = self.samples[idx]  # (path, label, source, actor_id)
         try:
             waveform, sr = sf.read(path)
         except Exception as e:
-            raise RuntimeError(f"Failed to read audio: {path}") from e
+            # Skip corrupted files by returning a zero waveform
+            print(f"WARNING: Skipping corrupted file: {path}")
+            waveform = np.zeros(self.max_samples, dtype=np.float32)
+            return torch.from_numpy(waveform), torch.tensor(label, dtype=torch.long)
         
         # Convert to torch and mono
         waveform = torch.from_numpy(waveform).float()
@@ -139,7 +150,7 @@ class EmotionDataset(Dataset):
     def get_sample_weights(self, ravdess_weight=7.0):
         """Return per-sample weights to balance RAVDESS vs CREMA-D."""
         weights = []
-        for _, _, source in self.samples:
+        for _, _, source, _ in self.samples:
             weights.append(ravdess_weight if source == "ravdess" else 1.0)
         return weights
 
@@ -381,12 +392,21 @@ def main():
     print("\n═══ Loading Data ═══")
     dataset = EmotionDataset(args.ravdess, args.cremad)
     
-    # Split
-    n_total = len(dataset)
-    n_val = max(int(n_total * 0.15), 32)
-    n_train = n_total - n_val
-    generator = torch.Generator().manual_seed(42)
-    train_ds, val_ds = torch.utils.data.random_split(dataset, [n_train, n_val], generator=generator)
+    # Split — actor-stratified to prevent data leakage
+    # Extract actor IDs and perform group-aware split
+    actor_ids = [s[3] for s in dataset.samples]  # (path, label, source, actor_id)
+    unique_actors = list(set(actor_ids))
+    n_val_actors = max(int(len(unique_actors) * 0.15), 2)
+    rng = __import__('random').Random(42)
+    val_actors = set(rng.sample(unique_actors, n_val_actors))
+    
+    train_indices = [i for i, aid in enumerate(actor_ids) if aid not in val_actors]
+    val_indices = [i for i, aid in enumerate(actor_ids) if aid in val_actors]
+    train_ds = torch.utils.data.Subset(dataset, train_indices)
+    val_ds = torch.utils.data.Subset(dataset, val_indices)
+    n_train, n_val = len(train_indices), len(val_indices)
+    
+    print(f"Actor-stratified split: {len(unique_actors)} actors -> {len(unique_actors)-n_val_actors} train, {n_val_actors} val")
     
     # Plain shuffle (no weighted sampling — pure RAVDESS only)
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,

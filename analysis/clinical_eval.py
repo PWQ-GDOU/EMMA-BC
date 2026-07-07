@@ -54,6 +54,14 @@ def comprehensive_metrics(preds, labels, pred_probs=None, thresh=10.0):
     m["f1"] = 2 * m["ppv"] * m["sens"] / (m["ppv"] + m["sens"] + 1e-8)
     if _SK and len(np.unique(lb)) >= 2:
         m["cohen_kappa"] = cohen_kappa_score(lb, pb)
+        # Cohen's d effect size: (mean_depressed - mean_non_depressed) / pooled_std
+        dep = p[lb == 1]
+        nondep = p[lb == 0]
+        if len(dep) > 1 and len(nondep) > 1:
+            s_pooled = np.sqrt(((len(dep)-1)*dep.var() + (len(nondep)-1)*nondep.var()) / (len(dep)+len(nondep)-2))
+            m["cohens_d"] = (dep.mean() - nondep.mean()) / (s_pooled + 1e-8)
+        else:
+            m["cohens_d"] = float("nan")
         if pred_probs is None:
             pred_probs = 1.0 / (1.0 + np.exp(-(p - thresh) / 3.0))
         try:
@@ -98,6 +106,10 @@ def print_report(metrics, calib=None, title="Clinical Evaluation"):
     if "auc_roc" in metrics:
         print("  AUC-ROC=%.4f  AUC-PR=%.4f  Kappa=%.4f" % (
             metrics["auc_roc"], metrics["auc_pr"], metrics["cohen_kappa"]))
+    if "cohens_d" in metrics and not np.isnan(metrics["cohens_d"]):
+        d = metrics["cohens_d"]
+        interp = "negligible" if abs(d) < 0.2 else ("small" if abs(d) < 0.5 else ("medium" if abs(d) < 0.8 else "large"))
+        print("  Cohen's d=%.4f (%s effect)" % (d, interp))
     if calib:
         print("  ECE=%.4f  Brier=%.4f" % (calib["ece"], calib["brier"]))
     print("  -- Clinical Readiness --")
@@ -284,8 +296,8 @@ def mc_dropout_eval(model, loader, normalizer, device, n_samples=30):
         result = mc_dropout_predict(model, audio, texts, attention_mask, 
                                       device, n_samples=n_samples)
         
-        norm_mean = normalizer.mean[0].item() if normalizer.mean is not None else 0
-        norm_std = normalizer.std[0].item() if normalizer.std is not None else 1
+        norm_mean = normalizer.mean.squeeze().item() if normalizer.mean is not None else 0
+        norm_std = normalizer.std.squeeze().item() if normalizer.std is not None else 1
         
         all_means.append(result["mean"] * norm_std + norm_mean)
         all_stds.append(result["std"] * norm_std)  # Std scales with normalization
@@ -330,6 +342,7 @@ def main():
     parser.add_argument("--output", type=str, default="clinical_results")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--max_audio_sec", type=int, default=30)
     parser.add_argument("--mc_samples", type=int, default=30)
     args = parser.parse_args()
     
@@ -355,13 +368,13 @@ def main():
     print("Loading validation data...")
     val_ds = DAICWOZDataset(args.data, split="train",
                              filter_interviewer=False,  # Use full transcript for eval
-                             min_audio_sec=1.0, max_audio_sec=600)
+                             min_audio_sec=1.0, max_audio_sec=args.max_audio_sec)
     _, val_ds = val_ds.split_val_from_train(val_ratio=0.15, seed=42)
     
     gen = torch.Generator().manual_seed(42)
     val_loader = DataLoader(
         val_ds, batch_size=args.batch_size, shuffle=False,
-        collate_fn=collate_daic, num_workers=2, pin_memory=True,
+        collate_fn=collate_daic, num_workers=0, pin_memory=True,
         generator=gen,
     )
     print(f"Validation: {len(val_ds)} samples")
@@ -384,7 +397,9 @@ def main():
         
         outputs = model(audio, texts, attention_mask=attention_mask)
         preds_norm = outputs["phq"].squeeze(-1).cpu()
-        denorm_preds = preds_norm * normalizer.std[0].cpu() + normalizer.mean[0].cpu()
+        std_val = normalizer.std.squeeze().cpu()
+        mean_val = normalizer.mean.squeeze().cpu()
+        denorm_preds = preds_norm * std_val + mean_val
         
         all_preds_cls.append(denorm_preds)
         all_labels_cls.append(labels)
@@ -480,8 +495,8 @@ def predict_to_csv(model, loader, normalizer, device, output_path,
             pred, conf, flag = predict_with_fallback(model, a, t, m, device)
             if use_mc_dropout:
                 mc_result = mc_dropout_predict(model, a, [t], m, device, n_samples=mc_samples)
-                nm = normalizer.mean[0].item() if normalizer.mean is not None else 0
-                ns = normalizer.std[0].item() if normalizer.std is not None else 1
+                nm = normalizer.mean.squeeze().item() if normalizer.mean is not None else 0
+                ns = normalizer.std.squeeze().item() if normalizer.std is not None else 1
                 mc_mean = mc_result["mean"][0].item() * ns + nm
                 mc_std = mc_result["std"][0].item() * ns
                 ci_lo = mc_result["ci_lower"][0].item() * ns + nm
@@ -490,7 +505,7 @@ def predict_to_csv(model, loader, normalizer, device, output_path,
                 rows.append([pid, pred, conf, flag, mc_mean, mc_std, ci_lo, ci_hi, 0.0, bl])
             else:
                 bl = "DEPRESSED" if pred >= 10 else "NON-DEPRESSED"
-            rows.append([pid, round(pred,2), round(conf,2), flag, bl])
+                rows.append([pid, round(pred,2), round(conf,2), flag, None, None, None, None, None, bl])
     # Exponential-decay trust: robust to OOD (no max_std dependency)
     # Fused = Confidence * exp(-MC_Std/3.0). Std=3 halves trust.
     if use_mc_dropout:
@@ -507,4 +522,7 @@ def predict_to_csv(model, loader, normalizer, device, output_path,
 
 
 
+
+
+if __name__ == "__main__":
     main()

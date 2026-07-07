@@ -92,7 +92,7 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
     
     for batch in pbar:
         # Skip batches with all-NaN labels (test set) or zero-mask audio
-        if torch.isnan(batch["phq_total"]).all():
+        if torch.isnan(batch["phq_total"]).any():
             continue
         audio = batch["audio"].to(device)
         attention_mask = batch["attention_mask"].to(device)
@@ -132,7 +132,7 @@ def val_epoch(model, loader, normalizer, device):
     n_batches = 0
     
     for batch in tqdm(loader, desc="Eval"):
-        if torch.isnan(batch["phq_total"]).all():
+        if torch.isnan(batch["phq_total"]).any():
             continue
         audio = batch["audio"].to(device)
         attention_mask = batch["attention_mask"].to(device)
@@ -189,7 +189,7 @@ def main():
     parser.add_argument("--data", type=str, default="/data/disk1/datasets/diac_woz")
     parser.add_argument("--modma_data", type=str, default="/data/disk1/datasets/modma/extracted")
     parser.add_argument("--modma_xlsx", type=str, default="/data/disk1/datasets/modma/extracted/audio_lanzhou_2015/subjects_information_audio_lanzhou_2015.xlsx")
-    parser.add_argument("--use_modma", action="store_true", default=True)
+    parser.add_argument("--use_modma", action="store_true", default=False)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--lr", type=float, default=5e-4, help="Higher LR for small trainable head")
@@ -214,11 +214,16 @@ def main():
     
     # ── 1. Data ──
     print("\n═══ Loading Data ═══")
-    daic_ds = DAICWOZDataset(args.data, split="train")
-    modma_ds = MODMADataset(args.modma_data, args.modma_xlsx, max_audio_sec=120)
-    full_ds = CombinedMultimodalDataset(daic_ds, modma_ds)
-    train_ds, val_ds = full_ds.split_by_subject(val_ratio=args.val_split, seed=args.seed)
-    _coll = collate_combined
+    daic_ds = DAICWOZDataset(args.data, split="train", filter_interviewer=False,
+                             min_audio_sec=1.0, max_audio_sec=30)
+    if args.use_modma:
+        modma_ds = MODMADataset(args.modma_data, args.modma_xlsx, max_audio_sec=120)
+        full_ds = CombinedMultimodalDataset(daic_ds, modma_ds)
+        train_ds, val_ds = full_ds.split_by_subject(val_ratio=args.val_split, seed=args.seed)
+        _coll = collate_combined
+    else:
+        train_ds, val_ds = daic_ds.split_val_from_train(val_ratio=args.val_split, seed=args.seed)
+        _coll = collate_daic
     gen = torch.Generator().manual_seed(args.seed)
     train_loader = DataLoader(
         train_ds, batch_size=args.batch_size, shuffle=True,

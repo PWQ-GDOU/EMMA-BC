@@ -26,7 +26,7 @@ import soundfile as sf
 from sklearn.model_selection import StratifiedKFold
 from sklearn.linear_model import RidgeCV, LogisticRegression
 from sklearn.svm import SVC
-from sklearn.ensemble import GradientBoostingClassifier, VotingClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, VotingClassifier
 from sklearn.preprocessing import RobustScaler, StandardScaler
 from sklearn.feature_selection import SelectKBest, mutual_info_classif, f_regression
 from sklearn.metrics import (
@@ -341,37 +341,14 @@ def load_modma(config, extractor=None):
 # ==========================================================
 # EVALUATION
 # ==========================================================
-def evaluate_clf(X_train, y_train, X_test, y_test):
-    """VotingClassifier with balanced weights."""
-    if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
-        return {k: np.nan for k in ['acc', 'f1', 'auc', 'sens', 'spec']}
-    
-    scaler = RobustScaler()
-    X_train_s = scaler.fit_transform(X_train)
-    X_test_s = scaler.transform(X_test)
-    
-    k = min(200, X_train_s.shape[1])
-    selector = SelectKBest(mutual_info_classif, k=k)
-    X_train_s = selector.fit_transform(X_train_s, y_train)
-    X_test_s = selector.transform(X_test_s)
-    
-    clf = VotingClassifier([
-        ('lr', LogisticRegression(max_iter=3000, class_weight='balanced', C=0.1)),
-        ('svc', SVC(kernel='rbf', probability=True, class_weight='balanced', C=1.0)),
-        ('gb', GradientBoostingClassifier(n_estimators=100, max_depth=3, learning_rate=0.05)),
-    ], voting='soft')
-    
-    clf.fit(X_train_s, y_train)
-    y_pred = clf.predict(X_test_s)
-    y_proba = clf.predict_proba(X_test_s)[:, 1] if hasattr(clf, 'predict_proba') else None
-    
-    return {
-        'acc': accuracy_score(y_test, y_pred),
-        'f1': f1_score(y_test, y_pred, zero_division=0),
-        'auc': roc_auc_score(y_test, y_proba) if y_proba is not None and len(np.unique(y_test)) == 2 else np.nan,
-        'sens': recall_score(y_test, y_pred, zero_division=0),
-        'spec': recall_score(y_test, y_pred, pos_label=0, zero_division=0),
-    }
+def cohens_d_from_groups(group1, group2):
+    """Compute Cohen's d effect size between two groups."""
+    if len(group1) < 2 or len(group2) < 2:
+        return np.nan
+    g1, g2 = np.asarray(group1), np.asarray(group2)
+    s = np.sqrt(((len(g1)-1)*g1.var() + (len(g2)-1)*g2.var()) / (len(g1)+len(g2)-2))
+    return (g1.mean() - g2.mean()) / (s + 1e-8)
+
 
 
 def evaluate_reg(X_train, y_train, X_test, y_test):
@@ -397,6 +374,117 @@ def evaluate_reg(X_train, y_train, X_test, y_test):
         'pearson_r': r,
         'pearson_p': p,
     }
+
+
+def evaluate_clf(X_train, y_train, X_test, y_test):
+    """VotingClassifier with balanced weights + Cohen's d."""
+    if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
+        return {k: np.nan for k in ['acc', 'f1', 'auc', 'sens', 'spec', 'cohens_d']}
+    
+    scaler = RobustScaler()
+    X_train_s = scaler.fit_transform(X_train)
+    X_test_s = scaler.transform(X_test)
+    
+    k = min(200, X_train_s.shape[1])
+    selector = SelectKBest(mutual_info_classif, k=k)
+    X_train_s = selector.fit_transform(X_train_s, y_train)
+    X_test_s = selector.transform(X_test_s)
+    
+    clf = VotingClassifier([
+        ('lr', LogisticRegression(max_iter=3000, class_weight='balanced', C=0.1)),
+        ('svc', SVC(kernel='rbf', probability=True, class_weight='balanced', C=1.0)),
+        ('gb', GradientBoostingClassifier(n_estimators=100, max_depth=3, learning_rate=0.05)),
+    ], voting='soft')
+    
+    clf.fit(X_train_s, y_train)
+    y_pred = clf.predict(X_test_s)
+    y_proba = clf.predict_proba(X_test_s)[:, 1] if hasattr(clf, 'predict_proba') else None
+    
+    # Cohen's d
+    dep_scores = y_proba[y_test == 1] if y_proba is not None else y_pred[y_test == 1].astype(float)
+    nondep_scores = y_proba[y_test == 0] if y_proba is not None else y_pred[y_test == 0].astype(float)
+    d_val = cohens_d_from_groups(dep_scores, nondep_scores)
+    
+    return {
+        'acc': accuracy_score(y_test, y_pred),
+        'f1': f1_score(y_test, y_pred, zero_division=0),
+        'auc': roc_auc_score(y_test, y_proba) if y_proba is not None and len(np.unique(y_test)) == 2 else np.nan,
+        'sens': recall_score(y_test, y_pred, zero_division=0),
+        'spec': recall_score(y_test, y_pred, pos_label=0, zero_division=0),
+        'cohens_d': d_val,
+    }
+
+
+def evaluate_clf_comparison(X_train, y_train, X_test, y_test):
+    """Compare LR, SVM, RF, GB, Voting side-by-side with Cohen's d."""
+    if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
+        return {}
+    
+    scaler = RobustScaler()
+    X_train_s = scaler.fit_transform(X_train)
+    X_test_s = scaler.transform(X_test)
+    
+    k = min(200, X_train_s.shape[1])
+    selector = SelectKBest(mutual_info_classif, k=k)
+    X_train_s = selector.fit_transform(X_train_s, y_train)
+    X_test_s = selector.transform(X_test_s)
+    
+    models = {
+        "LR": LogisticRegression(max_iter=3000, class_weight="balanced", C=0.1),
+        "SVM": SVC(kernel="rbf", probability=True, class_weight="balanced", C=1.0),
+        "RF": RandomForestClassifier(n_estimators=200, max_depth=10, class_weight="balanced", random_state=52),
+        "GB": GradientBoostingClassifier(n_estimators=100, max_depth=3, learning_rate=0.05),
+        "Voting": VotingClassifier([
+            ("lr", LogisticRegression(max_iter=3000, class_weight="balanced", C=0.1)),
+            ("svc", SVC(kernel="rbf", probability=True, class_weight="balanced", C=1.0)),
+            ("gb", GradientBoostingClassifier(n_estimators=100, max_depth=3, learning_rate=0.05)),
+        ], voting="soft"),
+    }
+    
+    results = {}
+    for name, clf in models.items():
+        clf.fit(X_train_s, y_train)
+        y_pred = clf.predict(X_test_s)
+        y_proba = clf.predict_proba(X_test_s)[:, 1] if hasattr(clf, "predict_proba") else None
+        dep = y_proba[y_test == 1] if y_proba is not None else y_pred[y_test == 1].astype(float)
+        nondep = y_proba[y_test == 0] if y_proba is not None else y_pred[y_test == 0].astype(float)
+        results[name] = {
+            "acc": accuracy_score(y_test, y_pred),
+            "f1": f1_score(y_test, y_pred, zero_division=0),
+            "auc": roc_auc_score(y_test, y_proba) if y_proba is not None and len(np.unique(y_test)) == 2 else np.nan,
+            "sens": recall_score(y_test, y_pred, zero_division=0),
+            "spec": recall_score(y_test, y_pred, pos_label=0, zero_division=0),
+            "cohens_d": cohens_d_from_groups(dep, nondep),
+        }
+    return results
+
+
+def print_classifier_comparison(daic_comp, modma_comp):
+    """Print side-by-side classifier comparison with Cohen's d."""
+    print()
+    print("=" * 90)
+    print("  MULTI-CLASSIFIER COMPARISON WITH EFFECT SIZE (Cohen's d)")
+    print("=" * 90)
+    classifiers = ["LR", "SVM", "RF", "GB", "Voting"]
+    for ds_name, comp in [("DAIC-WOZ", daic_comp), ("MODMA", modma_comp)]:
+        if comp is None:
+            continue
+        print()
+        print("  --- " + ds_name + " ---")
+        hdr = "  {:12} {:>7} {:>7} {:>7} {:>7} {:>7} {:>9}".format(
+            "Classifier", "Acc", "F1", "AUC", "Sens", "Spec", "Cohen d")
+        print(hdr)
+        print("  " + "-" * 63)
+        for name in classifiers:
+            if name not in comp:
+                continue
+            m = comp[name]
+            d_val = m.get("cohens_d", np.nan)
+            d_str = "{:.4f}".format(d_val) if not np.isnan(d_val) else "N/A"
+            row = "  {:12} {:7.3f} {:7.3f} {:7.3f} {:7.3f} {:7.3f} {:>9}".format(
+                name, m['acc'], m['f1'], m['auc'], m['sens'], m['spec'], d_str)
+            print(row)
+    print()
 
 
 # ==========================================================

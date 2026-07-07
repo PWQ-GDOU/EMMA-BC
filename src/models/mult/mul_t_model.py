@@ -821,8 +821,8 @@ class ConcordanceCorrelationCoefficient(nn.Module):
         mean_pred = y_pred.mean(dim=0, keepdim=True)
         mean_true = y_true.mean(dim=0, keepdim=True)
 
-        var_pred = y_pred.var(dim=0, unbiased=False) + self.eps
-        var_true = y_true.var(dim=0, unbiased=False) + self.eps
+        var_pred = y_pred.var(dim=0, unbiased=True) + self.eps
+        var_true = y_true.var(dim=0, unbiased=True) + self.eps
 
         # Pearson correlation
         cov = ((y_pred - mean_pred) * (y_true - mean_true)).mean(dim=0)
