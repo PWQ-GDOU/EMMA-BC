@@ -17,7 +17,7 @@ from src.models.adapter_model import CrossCulturalModel
 # Config
 BATCH, EPOCHS, LR = 4, 30, 2e-4
 SR, MAX_SEC = 16000, 120
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device('cpu')  # CPU to avoid OOM
 SEEDS = [42, 142, 242]
 
 class MODMADataset(Dataset):

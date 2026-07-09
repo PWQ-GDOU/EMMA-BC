@@ -342,6 +342,7 @@ def main():
     parser.add_argument("--output", type=str, default="clinical_results")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--split", type=str, default="val", choices=["val","test"])
     parser.add_argument("--max_audio_sec", type=int, default=30)
     parser.add_argument("--mc_samples", type=int, default=30)
     args = parser.parse_args()
@@ -352,13 +353,6 @@ def main():
     # Load model
     print("Loading model...")
     ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
-    d_video = getattr(val_ds, 'd_video', None)
-    model = MultimodalClinicalModel(
-        d_model=256, n_layers=4, n_heads=8,
-        freeze_audio_w2v=True, freeze_text_bert=True, n_tasks=1,
-        d_video=d_video,
-    ).to(device)
-    model.load_state_dict(ckpt["model_state_dict"])
     
     normalizer = LabelNormalizer()
     if "label_normalizer" in ckpt:
@@ -368,10 +362,16 @@ def main():
     
     # Data
     print("Loading validation data...")
-    val_ds = DAICWOZDataset(args.data, split="train",
-                             filter_interviewer=False,  # Use full transcript for eval
-                             min_audio_sec=1.0, max_audio_sec=args.max_audio_sec)
-    _, val_ds = val_ds.split_val_from_train(val_ratio=0.15, seed=42)
+    if args.split == 'test':
+        val_ds = DAICWOZDataset(args.data, split="test",
+                                 filter_interviewer=False,
+                                 min_audio_sec=1.0, max_audio_sec=args.max_audio_sec)
+        print(f"[TEST SET] {len(val_ds)} participants")
+    else:
+        val_ds = DAICWOZDataset(args.data, split="train",
+                                 filter_interviewer=False,
+                                 min_audio_sec=1.0, max_audio_sec=args.max_audio_sec)
+        _, val_ds = val_ds.split_val_from_train(val_ratio=0.15, seed=42)
     
     gen = torch.Generator().manual_seed(42)
     val_loader = DataLoader(
@@ -379,7 +379,15 @@ def main():
         collate_fn=collate_daic, num_workers=0, pin_memory=True,
         generator=gen,
     )
-    print(f"Validation: {len(val_ds)} samples")
+    print(f"Evaluation set: {len(val_ds)} samples")
+    d_video = getattr(val_ds, 'd_video', None)
+    model = MultimodalClinicalModel(
+        d_model=256, n_layers=4, n_heads=8,
+        freeze_audio_w2v=True, freeze_text_bert=True, n_tasks=1,
+        d_video=d_video,
+    ).to(device)
+    model.load_state_dict(ckpt["model_state_dict"])
+    d_video = getattr(val_ds, 'd_video', None)
     
     # ═══ 1. Classification metrics ═══
     print("\n═══ Clinical Binary Classification ═══")
