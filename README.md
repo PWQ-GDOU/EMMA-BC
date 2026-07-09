@@ -2,7 +2,6 @@
 
 > **乳腺癌患者多模态生态瞬时评估与症状群数智化管理**
 >
-> PI: 班悦 (Yue Ban) — 广东医科大学
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![PyTorch 2.5+](https://img.shields.io/badge/PyTorch-2.5+-red.svg)](https://pytorch.org/)
@@ -224,7 +223,6 @@ This work uses:
 - Pretrained models from [HuggingFace](https://huggingface.co/): `facebook/wav2vec2-base`, `bert-base-uncased`
 - PyTorch, torchaudio, transformers, pandas, numpy, scipy
 
-This research is conducted at **Guangdong Medical University** under the supervision of PI **Yue Ban** (班悦).
 
 ---
 
@@ -235,7 +233,6 @@ This research is conducted at **Guangdong Medical University** under the supervi
   title        = {EMMA-BC: Ecological Momentary Multimodal Assessment for Breast Cancer},
   author       = {PWQ-GDOU},
   year         = {2026},
-  url          = {https://github.com/PWQ-GDOU/EMMA-BC},
-  note         = {PI: Yue Ban, Guangdong Medical University}
+  url          = {https://github.com/PWQ-GDOU/EMMA-BC}
 }
 ```
