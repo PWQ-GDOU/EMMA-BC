@@ -1,0 +1,34 @@
+{
+  "WavLM+CrossAttn (Ours)": {
+    "f1": 0.655,
+    "auc": 0.648
+  },
+  "WavLM+MLP (Ours)": {
+    "f1": 0.648,
+    "auc": 0.648
+  },
+  "Huang2024 (replicated)": {
+    "f1": 0.639,
+    "auc": 0.687
+  },
+  "eGeMAPS+RF": {
+    "f1": 0.313,
+    "auc": 0.576
+  },
+  "WavLM+RF": {
+    "f1": 0.201,
+    "auc": 0.559
+  },
+  "WavLM+SVM": {
+    "f1": 0.13,
+    "auc": 0.475
+  },
+  "eGeMAPS+SVM": {
+    "f1": 0.044,
+    "auc": 0.456
+  },
+  "MFCC+SVM": {
+    "f1": 0.0,
+    "auc": 0.468
+  }
+}
