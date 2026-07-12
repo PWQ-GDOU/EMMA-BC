@@ -47,3 +47,20 @@ Thumbs.db
 # Large binary files
 *.safetensors
 *.bin  # exclude model weights
+
+# 实验数据 - 本地保存，不公开
+results/*.json
+results/*.npz
+results/clinical_eval/
+results/clinical_eval_daic_only/
+results/modma_experiments/
+results/EXPERIMENT_SUMMARY.md
+results/FINAL_SUMMARY.md
+
+# Huang复现数据
+reproduce_huang2024/*.json
+reproduce_huang2024/*.log
+
+# 训练日志
+logs/
+*.log
