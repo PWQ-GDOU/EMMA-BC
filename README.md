@@ -7,49 +7,34 @@
 [![CUDA 13.0](https://img.shields.io/badge/CUDA-13.0-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![License](https://img.shields.io/badge/License-Research%20Only-lightgrey.svg)](LICENSE)
 
-## 🎯 SOTA Comparison (DAIC-WOZ, 5-fold CV, 82 subjects)
+## 🔬 Research Overview
 
-| Rank | Method | F1 | AUC |
-|:--:|------|:--:|:--:|
-| 🥇 | **WavLM+CrossAttn (Ours)** | **0.655** | 0.648 |
-| 🥈 | WavLM+MLP (Ours) | 0.648 | 0.648 |
-| 🥉 | Huang 2024 (replicated) | 0.639 | 0.687 |
-| 4 | WavLM+RoBERTa (Wu'23) | 0.562 | 0.405 |
-| 5 | eGeMAPS+RF (AVEC baseline) | 0.313 | 0.576 |
-| 6 | WavLM+RF | 0.201 | 0.559 |
-| 7 | WavLM+SVM | 0.130 | 0.475 |
-| 8 | eGeMAPS+SVM | 0.044 | 0.456 |
-| 9 | MFCC+SVM | 0.000 | 0.468 |
+Multimodal depression detection from clinical interviews. Combines WavLM audio features, BERT text embeddings, and OpenFace facial features with lightweight adapter-based fusion.
 
-## 🔑 Key Findings
+> 📝 **Publication in preparation — full experimental results and model checkpoints will be released upon acceptance.**
 
-1. **Our WavLM method outperforms all baselines by 2-15x**
-2. **Classical features (eGeMAPS/MFCC) are non-functional** on honest participant-level splits
-3. **Huang 2024's claimed 96.5% accuracy is irreproducible** — maximum clean F1 = 63.9%
-4. **Multimodal fusion CAN degrade performance** — adding text to WavLM drops F1 from 0.655 to 0.562
-5. **Cross-cultural transfer (Chinese→English) fails** — MODMA pretraining hurts DAIC performance
+## 🏗 Architecture (Overview)
 
-## 📊 Complete Evaluation Protocol
+Frozen pre-trained encoders (WavLM, BERT) + trainable adapter layers + cross-attention fusion → depression classification/regression.
 
-| Protocol | N | F1 | AUC | 95% CI |
-|----------|:--:|:--:|:--:|------|
-| 5-fold CV | 82 | 0.655 | 0.648 | [0.592, 0.701] |
-| LOSO CV | 82 | 0.452 | 0.526 | [0.286, 0.597] |
-| AVEC Split | 63→19 | 0.533 | 0.607 | [0.167, 0.800] |
-| DAIC→MODMA | 82→51 | 0.250 | 0.708 | — |
+## 📂 Code Structure
 
-## 🏗 Architecture
+| Directory | Purpose |
+|-----------|---------|
+| `src/models/` | Model architectures (WavLM adapter, fusion) |
+| `phaseB/` | Training pipeline |
+| `analysis/` | Clinical evaluation tools |
+| `experiments/` | Experiment scripts (MODMA, classifier comparison) |
+| `reproduce_huang2024/` | Huang 2024 replication study |
 
-```
-WavLM (frozen, layers 8-12)    BERT (frozen)       OpenFace (49d)
-        ↓                           ↓                    ↓
-   768-dim mean-pool            768-dim              VideoAdapter
-        ↓                           ↓                    ↓
-    AudioAdapter              TextAdapter          VideoAdapter
-        ↓___________________________↓____________________↓
-                            Cross-Attention Fusion
-                                    ↓
-                               Classifier
+## 🚀 Quick Start
+
+```bash
+# Extract features
+python extract_features.py --dataset daic
+
+# Train fusion model
+python train_fusion.py --mode daic --modality audio_only
 ```
 
 ---
