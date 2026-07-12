@@ -64,3 +64,4 @@ reproduce_huang2024/*.log
 # 训练日志
 logs/
 *.log
+reports/*.png
