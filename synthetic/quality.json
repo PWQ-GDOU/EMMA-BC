@@ -1,0 +1,452 @@
+[
+  {
+    "file": "synth_000.wav",
+    "duration": 4.8,
+    "snr_db": 32.2,
+    "speech_ratio": 0.54,
+    "utmos": null,
+    "rms": 0.1102,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_001.wav",
+    "duration": 5.3,
+    "snr_db": 81.1,
+    "speech_ratio": 0.5,
+    "utmos": null,
+    "rms": 0.1005,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_002.wav",
+    "duration": 6.3,
+    "snr_db": 28.2,
+    "speech_ratio": 0.57,
+    "utmos": null,
+    "rms": 0.108,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_003.wav",
+    "duration": 4.8,
+    "snr_db": 45.8,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.1052,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_004.wav",
+    "duration": 6.6,
+    "snr_db": 43.5,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.1127,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_005.wav",
+    "duration": 6.5,
+    "snr_db": 40.7,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1022,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_006.wav",
+    "duration": 6.1,
+    "snr_db": 36.4,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1043,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_007.wav",
+    "duration": 4.9,
+    "snr_db": 33.0,
+    "speech_ratio": 0.55,
+    "utmos": null,
+    "rms": 0.11,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_008.wav",
+    "duration": 6.0,
+    "snr_db": 48.7,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1021,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_009.wav",
+    "duration": 5.3,
+    "snr_db": 56.9,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1018,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_010.wav",
+    "duration": 6.9,
+    "snr_db": 46.6,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1011,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_011.wav",
+    "duration": 6.6,
+    "snr_db": 40.2,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1132,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_012.wav",
+    "duration": 6.8,
+    "snr_db": 44.9,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1107,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_013.wav",
+    "duration": 5.7,
+    "snr_db": 42.0,
+    "speech_ratio": 0.54,
+    "utmos": null,
+    "rms": 0.1033,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_014.wav",
+    "duration": 7.9,
+    "snr_db": 51.7,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1073,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_015.wav",
+    "duration": 5.1,
+    "snr_db": 38.0,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1074,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_016.wav",
+    "duration": 6.4,
+    "snr_db": 57.4,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.1108,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_017.wav",
+    "duration": 5.2,
+    "snr_db": 25.1,
+    "speech_ratio": 0.58,
+    "utmos": null,
+    "rms": 0.1117,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_018.wav",
+    "duration": 6.7,
+    "snr_db": 33.8,
+    "speech_ratio": 0.55,
+    "utmos": null,
+    "rms": 0.1058,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_019.wav",
+    "duration": 5.6,
+    "snr_db": 38.0,
+    "speech_ratio": 0.56,
+    "utmos": null,
+    "rms": 0.1051,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_020.wav",
+    "duration": 6.4,
+    "snr_db": 34.1,
+    "speech_ratio": 0.54,
+    "utmos": null,
+    "rms": 0.1047,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_021.wav",
+    "duration": 5.9,
+    "snr_db": 37.7,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1047,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_022.wav",
+    "duration": 7.2,
+    "snr_db": 61.1,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.1079,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_023.wav",
+    "duration": 7.5,
+    "snr_db": 70.5,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.105,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_024.wav",
+    "duration": 5.8,
+    "snr_db": 35.6,
+    "speech_ratio": 0.55,
+    "utmos": null,
+    "rms": 0.1059,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_025.wav",
+    "duration": 5.5,
+    "snr_db": 35.8,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1053,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_026.wav",
+    "duration": 6.2,
+    "snr_db": 41.0,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.103,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_027.wav",
+    "duration": 5.5,
+    "snr_db": 43.6,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1036,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_028.wav",
+    "duration": 7.0,
+    "snr_db": 67.0,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.1077,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_029.wav",
+    "duration": 5.0,
+    "snr_db": 40.8,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1058,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_030.wav",
+    "duration": 5.6,
+    "snr_db": 48.0,
+    "speech_ratio": 0.54,
+    "utmos": null,
+    "rms": 0.1049,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_031.wav",
+    "duration": 5.7,
+    "snr_db": 48.0,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.1035,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_032.wav",
+    "duration": 5.4,
+    "snr_db": 37.1,
+    "speech_ratio": 0.54,
+    "utmos": null,
+    "rms": 0.1073,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_033.wav",
+    "duration": 5.5,
+    "snr_db": 83.5,
+    "speech_ratio": 0.5,
+    "utmos": null,
+    "rms": 0.0992,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_034.wav",
+    "duration": 6.8,
+    "snr_db": 45.3,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1109,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_035.wav",
+    "duration": 8.0,
+    "snr_db": 79.4,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.104,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_036.wav",
+    "duration": 7.3,
+    "snr_db": 61.3,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1077,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_037.wav",
+    "duration": 4.3,
+    "snr_db": 48.9,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1071,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_038.wav",
+    "duration": 6.0,
+    "snr_db": 41.9,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.1035,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_039.wav",
+    "duration": 5.9,
+    "snr_db": 36.7,
+    "speech_ratio": 0.54,
+    "utmos": null,
+    "rms": 0.1078,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_040.wav",
+    "duration": 7.1,
+    "snr_db": 59.7,
+    "speech_ratio": 0.51,
+    "utmos": null,
+    "rms": 0.1083,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_041.wav",
+    "duration": 5.9,
+    "snr_db": 38.0,
+    "speech_ratio": 0.53,
+    "utmos": null,
+    "rms": 0.106,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_042.wav",
+    "duration": 6.1,
+    "snr_db": 31.1,
+    "speech_ratio": 0.55,
+    "utmos": null,
+    "rms": 0.1067,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_043.wav",
+    "duration": 5.7,
+    "snr_db": 38.1,
+    "speech_ratio": 0.54,
+    "utmos": null,
+    "rms": 0.1051,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_044.wav",
+    "duration": 5.4,
+    "snr_db": 44.0,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1049,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_045.wav",
+    "duration": 7.1,
+    "snr_db": 43.3,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1101,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_046.wav",
+    "duration": 4.9,
+    "snr_db": 42.8,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1067,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_047.wav",
+    "duration": 6.2,
+    "snr_db": 38.8,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1073,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_048.wav",
+    "duration": 5.8,
+    "snr_db": 32.0,
+    "speech_ratio": 0.56,
+    "utmos": null,
+    "rms": 0.1067,
+    "status": "PASS"
+  },
+  {
+    "file": "synth_049.wav",
+    "duration": 6.9,
+    "snr_db": 52.2,
+    "speech_ratio": 0.52,
+    "utmos": null,
+    "rms": 0.1093,
+    "status": "PASS"
+  }
+]

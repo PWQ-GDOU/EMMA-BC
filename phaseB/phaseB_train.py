@@ -23,11 +23,12 @@ import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from tqdm import tqdm
 
 # Import project modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from contrastive_loss import MoCoQueue, supcon_loss
 from multimodal_model import (
     MultimodalClinicalModel,
     regression_metrics,
@@ -76,6 +77,27 @@ class LabelNormalizer:
         return {"mean": self.mean, "std": self.std}
     
     def load_state_dict(self, d):
+        self.mean = d["mean"]; self.std = d["std"]
+
+# ═══════════════════════════════════════
+# Focal MSE Loss — penalizes hard examples more
+# ═══════════════════════════════════════
+class FocalMSELoss(nn.Module):
+    """MSE with focal weighting: easy samples get down-weighted."""
+    def __init__(self, gamma=2.0):
+        super().__init__()
+        self.gamma = gamma
+    def forward(self, pred, target):
+        mse = (pred - target) ** 2
+        with torch.no_grad():
+            weight = (1 - torch.exp(-mse)).clamp(min=1e-8) ** self.gamma
+        return (weight * mse).mean()
+
+    
+    def state_dict(self):
+        return {"mean": self.mean, "std": self.std}
+    
+    def load_state_dict(self, d):
         self.mean = d["mean"]
         self.std = d["std"]
 
@@ -84,7 +106,8 @@ class LabelNormalizer:
 # Training
 # ═══════════════════════════════════════════
 
-def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epochs, modality="full"):
+
+def train_epoch(model, loader, normalizer, optimizer, criterion, device, epoch, total_epochs, modality="full"):
     model.train()
     losses = 0.0
     n_batches = 0
@@ -102,11 +125,14 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
         texts = batch["texts"]
         labels = batch["phq_total"].to(device)  # [B]
         
+
+        
         # Normalize labels
         labels_norm = normalizer.normalize(labels.unsqueeze(-1)).squeeze(-1)
         
         optimizer.zero_grad()
         ht = batch.get("has_text", None); ht = ht.to(device) if ht is not None else None
+
         # Modality ablation - 7 groups: A,V,T, A+V, V+T, A+T(full), A+V+T(all)
         if modality in ("video_only", "text_only", "video_text"):
             audio = torch.zeros_like(audio)
@@ -126,11 +152,33 @@ def train_epoch(model, loader, normalizer, optimizer, device, epoch, total_epoch
                 vf_m.append(torch.cat([torch.ones(v.shape[0]), torch.zeros(pad_len)]))
             vf = torch.stack(vf_p).to(device)
             vf_mask = torch.stack(vf_m).to(device)
-        outputs = model(audio, texts, attention_mask=attention_mask, has_text=ht, video_features=vf, video_mask=vf_mask)
-        pred = outputs["phq"].squeeze(-1)  # [B]
+        outputs, audio_contrast = model(audio, texts, attention_mask=attention_mask, has_text=ht, video_features=vf, video_mask=vf_mask)
         
-        loss = nn.functional.mse_loss(pred, labels_norm)
-        loss.backward()
+        # Multi-task loss: PHQ (always) + GAD + PSQI when available
+        loss = criterion(outputs["phq"].squeeze(-1), labels_norm)
+        if "gad" in outputs and "gad" in batch:
+            gad_lbl = batch["gad"].to(device)
+            gad_mask = ~torch.isnan(gad_lbl)
+            if gad_mask.any():
+                t = gad_lbl[gad_mask]
+                loss = loss + 0.3 * nn.functional.mse_loss(outputs["gad"].squeeze(-1)[gad_mask], (t-t.mean())/(t.std().clamp(min=1e-6)))
+        if "psqi" in outputs and "psqi" in batch:
+            psqi_lbl = batch["psqi"].to(device)
+            psqi_mask = ~torch.isnan(psqi_lbl)
+            if psqi_mask.any():
+                t = psqi_lbl[psqi_mask]
+                loss = loss + 0.3 * nn.functional.mse_loss(outputs["psqi"].squeeze(-1)[psqi_mask], (t-t.mean())/(t.std().clamp(min=1e-6)))
+        # Contrastive loss with MoCo queue
+        if len(audio_contrast) >= 2:
+            cont_loss = supcon_loss(audio_contrast, labels, contrast_queue.get(), temperature=0.07)
+            total_loss = loss + contrast_alpha * cont_loss
+        else:
+            total_loss = loss
+        
+        # Update MoCo queue with detached features
+        contrast_queue.enqueue(audio_contrast.detach())
+        
+        total_loss.backward()
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         
@@ -162,6 +210,7 @@ def val_epoch(model, loader, normalizer, device, modality="full"):
         
         labels_norm = normalizer.normalize(labels.unsqueeze(-1)).squeeze(-1)
         ht = batch.get("has_text", None); ht = ht.to(device) if ht is not None else None
+
         # Modality ablation - 7 groups: A,V,T, A+V, V+T, A+T(full), A+V+T(all)
         if modality in ("video_only", "text_only", "video_text"):
             audio = torch.zeros_like(audio)
@@ -181,7 +230,7 @@ def val_epoch(model, loader, normalizer, device, modality="full"):
                 vf_m.append(torch.cat([torch.ones(v.shape[0]), torch.zeros(pad_len)]))
             vf = torch.stack(vf_p).to(device)
             vf_mask = torch.stack(vf_m).to(device)
-        outputs = model(audio, texts, attention_mask=attention_mask, has_text=ht, video_features=vf, video_mask=vf_mask)
+        outputs, _ = model(audio, texts, attention_mask=attention_mask, has_text=ht, video_features=vf, video_mask=vf_mask)
         preds_norm = outputs["phq"].squeeze(-1)
         
         loss = nn.functional.mse_loss(preds_norm, labels_norm)
@@ -228,7 +277,7 @@ def main():
     parser.add_argument("--modma_data", type=str, default="/data/disk1/datasets/modma/extracted")
     parser.add_argument("--modma_xlsx", type=str, default="/data/disk1/datasets/modma/extracted/audio_lanzhou_2015/subjects_information_audio_lanzhou_2015.xlsx")
     parser.add_argument("--use_modma", action="store_true", default=False)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--lr", type=float, default=5e-4, help="Higher LR for small trainable head")
     parser.add_argument("--d_model", type=int, default=256)
@@ -256,7 +305,7 @@ def main():
     # ── 1. Data ──
     print("\n═══ Loading Data ═══")
     daic_ds = DAICWOZDataset(args.data, split="train", filter_interviewer=False,
-                             min_audio_sec=1.0, max_audio_sec=30)
+                             min_audio_sec=1.0, max_audio_sec=5)
     if args.use_modma:
         modma_ds = MODMADataset(args.modma_data, args.modma_xlsx, max_audio_sec=120)
         full_ds = CombinedMultimodalDataset(daic_ds, modma_ds)
@@ -266,8 +315,30 @@ def main():
         train_ds, val_ds = daic_ds.split_val_from_train(val_ratio=args.val_split, seed=args.seed)
         _coll = collate_daic
     gen = torch.Generator().manual_seed(args.seed)
+    
+    # First pass: collect labels via a temp loader for oversampling
+    tmp_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=False,
+                            collate_fn=_coll, num_workers=0, drop_last=False)
+    all_labels = []
+    for batch in tmp_loader:
+        all_labels.append(batch["phq_total"])
+    all_labels = torch.cat(all_labels)
+    pos_mask = all_labels >= 10.0
+    n_pos, n_neg = pos_mask.sum().item(), (~pos_mask).sum().item()
+    if n_pos > 0 and n_neg > 0:
+        # Assign weight: positive samples get 3x weight + augmentation factor
+        # With replacement=True, this effectively augments positive samples
+        sample_weights = torch.where(pos_mask, n_neg / n_pos * 2.0, 1.0)
+        sampler = WeightedRandomSampler(sample_weights.tolist(), int(len(sample_weights) * 1.3), replacement=True)
+        print(f"Oversampling: pos={n_pos}, neg={n_neg}, ratio={n_neg/n_pos:.1f}:1, augmented_size={int(len(sample_weights)*1.3)}")
+    else:
+        sampler = None
+        print(f"No oversampling: pos={n_pos}, neg={n_neg}")
+    
     train_loader = DataLoader(
-        train_ds, batch_size=args.batch_size, shuffle=True,
+        train_ds, batch_size=args.batch_size,
+        sampler=sampler if sampler else None,
+        shuffle=(sampler is None),
         collate_fn=_coll, num_workers=args.num_workers,
         pin_memory=True, generator=gen, drop_last=True,
     )
@@ -298,7 +369,7 @@ def main():
         n_layers=4, n_heads=8,
         freeze_audio_w2v=True,
         freeze_text_bert=True,
-        n_tasks=1,  # PHQ-8 only for DAIC-WOZ
+        n_tasks=3,  # PHQ+GAD+PSQI multi-task
         audio_pretrained=args.audio_pretrained if os.path.exists(args.audio_pretrained) else None,
         d_video=d_video,
     ).to(device)
@@ -308,6 +379,14 @@ def main():
     
     params = model.count_params()
     print(f"Params: {params['total']:,} total, {params['trainable']:,} trainable")
+    
+    # MoCo memory queue + contrastive settings (global for train_epoch access)
+    global contrast_queue, contrast_alpha
+    contrast_queue = MoCoQueue(dim=64, K=256)
+    contrast_alpha = 0.1
+    
+    # Focal Loss for class-imbalanced regression
+    criterion = FocalMSELoss(gamma=2.0)
     
     # ── 3. Optimizer (CRITICAL Fix 1: filter requires_grad) ──
     # No weight decay on bias/LayerNorm — grouped params for small fusion head
@@ -387,7 +466,7 @@ def main():
 
     print(f"\n═══ Training ({start_epoch} \u2192 {args.epochs}) ═══")
     for epoch in range(start_epoch, args.epochs + 1):
-        train_loss = train_epoch(model, train_loader, normalizer, optimizer, device, epoch, args.epochs, args.modality)
+        train_loss = train_epoch(model, train_loader, normalizer, optimizer, criterion, device, epoch, args.epochs, args.modality)
         metrics = val_epoch(model, val_loader, normalizer, device, args.modality)
         # Epoch-level scheduler (CosineAnnealingWarmRestarts is epoch-based).
         # Skipped batches in train_epoch do NOT affect scheduler timing.

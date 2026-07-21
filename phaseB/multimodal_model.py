@@ -27,6 +27,8 @@ def set_seed(seed=42):
 
 set_seed(42)
 from transformers import Wav2Vec2Model, BertModel, BertTokenizer
+import sys; sys.path.insert(0, '/data/disk3/EMMA-BC')
+from mamba_encoder import MambaEncoder
 
 
 # ══════════════════════════════════════════════════════════
@@ -119,17 +121,23 @@ class AudioEncoder(nn.Module):
             nn.Conv1d(d_model, d_model, kernel_size=3, padding=1, stride=2),
         )
 
-        # Transformer
+        # Mamba (replaces Transformer for better long-sequence modeling)
         self.pos_enc = SinusoidalPositionalEncoding(d_model, max_len=5000, dropout=dropout)
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=n_heads,
-            dim_feedforward=d_ff,
-            dropout=dropout,
-            batch_first=True,
-            activation="gelu",
+        # Contrastive projection head
+        self.contrast_proj = nn.Sequential(
+            nn.Linear(d_model, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+        
+        self.transformer = MambaEncoder(
+            d_model=d_model,
+            n_layers=n_layers,
+            d_state=16,
+            d_conv=4,
+            expand=2,
+            dropout=dropout,
+        )
         self.d_model = d_model
 
         # Load pretrained weights if provided
@@ -179,7 +187,8 @@ class AudioEncoder(nn.Module):
             pooled = (features * mask_float).sum(dim=1) / mask_float.sum(dim=1).clamp(min=1)
         else:
             pooled = features.mean(dim=1)
-        return pooled  # [B, d_model]
+        contrast_feat = nn.functional.normalize(self.contrast_proj(pooled), dim=-1)
+        return pooled, contrast_feat  # 256-dim for regression, 64-dim for contrastive
 
 
 # ══════════════════════════════════════════════════════════
@@ -426,7 +435,7 @@ class MultimodalClinicalModel(nn.Module):
             dict: {"phq": [B,1], "gad": [B,1], "psqi": [B,1]}
         """
         device = waveform.device
-        audio_emb = self.audio_encoder(waveform, attention_mask)  # [B, d_model]
+        audio_emb, audio_contrast = self.audio_encoder(waveform, attention_mask)  # [B, d_model], [B, 64]
         video_emb = None
         if video_features is not None:
             video_emb = self.video_encoder(video_features, video_mask)  # [B, d_model]
@@ -437,7 +446,7 @@ class MultimodalClinicalModel(nn.Module):
             video_phq = self.video_proj(video_emb).squeeze(-1)  # [B]
             fused_phq = (outputs["phq"] + video_phq) / 2.0
             outputs["phq"] = fused_phq
-        return outputs
+        return outputs, audio_contrast
 
     def freeze_backbones_for_training(self):
         """Call ONCE before training. Sets frozen modules to eval() 
