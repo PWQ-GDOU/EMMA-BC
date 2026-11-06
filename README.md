@@ -9,9 +9,9 @@ A Reproducibility and Engineering Practice on DAIC-WOZ: Benchmarking Across 9 Me
 [![License](https://img.shields.io/badge/License-Research%20Only-lightgrey.svg)](LICENSE)
 
 ## 🔬 Project Overview
-This is an **independent engineering project** commissioned by a faculty member at Guangdong Medical University. The goal is to build a multimodal clinical symptom assessment system. It combines WavLM audio features, BERT text embeddings, and OpenFace facial features with lightweight adapter-based fusion for depression detection (PHQ-8/9, GAD-7, PSQI).
+Multimodal clinical symptom assessment system for depression detection (PHQ-8/9, GAD-7, PSQI). Combines WavLM audio features, BERT text embeddings, and OpenFace facial features with lightweight adapter-based fusion.
 
-*Note: This is a practical engineering implementation. A software copyright (软著) is currently under application. No formal academic paper is involved.*
+*Note: Practical engineering implementation. A software copyright (软著) is currently under application. No formal academic paper is involved.*
 
 ## 🏗 Architecture (Overview)
 
@@ -244,7 +244,7 @@ If you find the code or architecture useful for your engineering projects, you c
   title        = {EMMA-BC: Multimodal Clinical Symptom Assessment System},
   author       = {Wenquan Peng},
   year         = {2026},
-  note         = {Commissioned engineering project for medical clinical research. Software copyright under application.},
+  note         = {Software copyright under application.},
   url          = {https://github.com/PWQ-GDOU/EMMA-BC}
 }
 ```
