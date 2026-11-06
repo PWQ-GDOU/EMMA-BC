@@ -1,4 +1,5 @@
-# EMMA-BC: Depression Detection via Multimodal Speech Analysis
+# EMMA-BC: Multimodal Clinical Symptom Assessment System
+A Reproducibility and Engineering Practice on DAIC-WOZ: Benchmarking Across 9 Methods
 
 > **How (Not) to Evaluate Depression Detection on DAIC-WOZ: A Reproducibility Study Across 9 Methods**
 
@@ -7,11 +8,10 @@
 [![CUDA 13.0](https://img.shields.io/badge/CUDA-13.0-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![License](https://img.shields.io/badge/License-Research%20Only-lightgrey.svg)](LICENSE)
 
-## 🔬 Research Overview
+## 🔬 Project Overview
+This is an **independent engineering project** commissioned by a faculty member at Guangdong Medical University. The goal is to build a multimodal clinical symptom assessment system. It combines WavLM audio features, BERT text embeddings, and OpenFace facial features with lightweight adapter-based fusion for depression detection (PHQ-8/9, GAD-7, PSQI).
 
-Multimodal depression detection from clinical interviews. Combines WavLM audio features, BERT text embeddings, and OpenFace facial features with lightweight adapter-based fusion.
-
-> 📝 **Publication in preparation — full experimental results and model checkpoints will be released upon acceptance.**
+*Note: This is a practical engineering implementation. A software copyright (软著) is currently under application. No formal academic paper is involved.*
 
 ## 🏗 Architecture (Overview)
 
@@ -150,7 +150,7 @@ tmux attach -t emma
 ```bash
 python analysis/interpret.py       # Permutation importance + error analysis + fairness
 python analysis/clinical_eval.py   # Classification + MC-Dropout 95% CI + fallback
-python analysis/table_generator.py # Paper-ready tables (MAE, Sensitivity, Trust scores)
+python analysis/table_generator.py # Project-ready reports (MAE, Sensitivity, Trust scores)
 ```
 
 ### Prediction CSV
@@ -218,7 +218,7 @@ EMMA-BC/
 ## Known Limitations
 
 1. **DAIC-WOZ transcripts**: No speaker labels — interviewer (Ellie) and patient speech are interleaved. `filter_interviewer` option available but may false-positive.
-2. **Single-modality fallback**: Audio-only/text-only predictions are untrained — use complete dual-modality samples for paper experiments.
+2. **Single-modality fallback**: Audio-only/text-only predictions are untrained — use complete dual-modality samples for evaluation purposes.
 3. **Test set labels**: DAIC-WOZ official test labels are **hidden**. Submit predictions to [EvalAI](https://eval.ai/) for official scoring. Never compute metrics on the official test split locally.
 4. **MODMA**: Dataset available but not yet integrated into Phase B pipeline.
 
@@ -237,13 +237,14 @@ This work uses:
 
 ---
 
-## Citation
+## Citation / Usage
+If you find the code or architecture useful for your engineering projects, you can refer to it as follows:
 
-```bibtex
 @software{emma-bc-2026,
-  title        = {EMMA-BC: Ecological Momentary Multimodal Assessment for Breast Cancer},
-  author       = {PWQ-GDOU},
+  title        = {EMMA-BC: Multimodal Clinical Symptom Assessment System},
+  author       = {Wenquan Peng},
   year         = {2026},
+  note         = {Commissioned engineering project for medical clinical research. Software copyright under application.},
   url          = {https://github.com/PWQ-GDOU/EMMA-BC}
 }
 ```
